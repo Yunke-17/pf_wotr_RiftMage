@@ -26,7 +26,7 @@ namespace WizardArchetype
     ///   B4  3级 法术穿透 +2          【自建】不用原版专长，避免与专长重复叠加
     ///   B5  7级 先攻掷 2 骰取高       ModifyD20(Initiative, 2, TakeBest)
     ///   B7  先攻 + 智力调整值         AddContextStatBonus
-    ///   B8  该加值 ≤ 角色总等级       PropertyCalculator(Min) + CharacterLevelGetter
+    ///   B8  该加值 ≤ 法师职业等级     PropertyCalculator(Min) + ClassLevelGetter
     ///   B10 职业先攻 floor(L/2) 封顶   ContextRankConfig(ClassLevel, Div2, Max 10)
     ///   B12 感知检定用 max(INT, WIS)  三个感知技能都要覆盖
     ///   B14 专注封顶 +6               ConcentrationBonus + ContextRankConfig
@@ -127,7 +127,7 @@ namespace WizardArchetype
                 new BlueprintComponent[] { bonus, rank });
         }
 
-        // ---------- B7 + B8：先攻 + min(IntMod, 角色等级) ----------
+        // ---------- B7 + B8：先攻 + min(IntMod, 法师职业等级) ----------
         private static SimpleBlueprint MakeInitiativeFromInt(BlueprintsCache cache)
         {
             var comps = Main.UseCappedInitiative
@@ -137,7 +137,7 @@ namespace WizardArchetype
             return NewFeature(cache, GuidInitiativeInt, "InitiativeInt",
                 "智力先攻",
                 Main.UseCappedInitiative
-                    ? "先攻获得智力调整值加值，但不超过角色总等级。"
+                    ? "先攻获得智力调整值加值，但不超过法师职业等级。"
                     : "先攻获得智力调整值加值。",
                 comps);
         }
@@ -161,7 +161,7 @@ namespace WizardArchetype
         }
 
         /// <summary>
-        /// 试验方案：PropertyCalculator 的 Min(IntMod, 角色等级)。
+        /// 试验方案：PropertyCalculator 的 Min(IntMod, 法师职业等级)。
         ///
         /// 依据：PropertyCalculator.Min 从 getters[0] 起算（无 0 初值），
         /// 因此智力为负时能保留负值；这是 00 §4.4 手段 4，

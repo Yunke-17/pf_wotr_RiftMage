@@ -20,10 +20,13 @@ namespace WizardArchetype
         public static bool DebugLog = true;
 
         /// <summary>
-        /// 智力先攻是否启用"封顶到角色等级"。
-        /// true  = PropertyCalculator.Min(IntMod, CharacterLevel)，精确但依赖反射
+        /// 智力先攻是否启用"封顶到法师职业等级"。
+        /// true  = PropertyCalculator.Min(IntMod, 法师职业等级)，精确但依赖反射
         /// false = DerivativeStatBonus（原版剑圣路径），零反射但无封顶
         /// 回退时改这一处即可。
+        ///
+        /// 封顶基准 = 法师职业等级（不是角色总等级）。2026-10-18 用户确认以代码为准，
+        /// 忽略机制说明书 §5.1「C 为角色总等级」的表述。
         /// </summary>
         public static bool UseCappedInitiative = true;
 
