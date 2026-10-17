@@ -1,0 +1,14 @@
+# 构建产物
+bin/
+obj/
+verify/bin/
+verify/obj/
+
+# 用户本地/IDE
+.vs/
+*.user
+*.suo
+
+# 游戏侧运行时产物（若有人误拷回工程）
+*.Log.txt
+WizardArchetype.dll.*.cache

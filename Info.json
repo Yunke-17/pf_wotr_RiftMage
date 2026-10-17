@@ -1,0 +1,10 @@
+{
+  "Id": "WizardArchetype",
+  "DisplayName": "Wizard Archetype",
+  "Author": "WizardArchetype",
+  "Version": "0.1.0",
+  "ManagerVersion": "0.32.4",
+  "Requirements": [],
+  "AssemblyName": "WizardArchetype.dll",
+  "EntryMethod": "WizardArchetype.Main.Load"
+}
