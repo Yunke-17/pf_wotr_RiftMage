@@ -57,6 +57,14 @@ namespace WizardArchetype
         {
             var result = new List<(int, SimpleBlueprint)>();
 
+            // D2–D4：能力 X「强化施法」——1 级，自由动作，每次休息 1 次
+            // 阶段 3 第 0 步：只验证蓝图注册与冒泡，不含任何自定义组件
+            var abilityX = AbilityX.Create(cache);
+            if (abilityX != null)
+            {
+                result.Add((1, abilityX));
+            }
+
             AddOriginal(result, cache, 1, HareBond, "幸运野兔");
             AddSkillFocusArcana(result, cache);
 
