@@ -145,53 +145,23 @@ namespace WizardArchetype
                 FxOnRemove = new Kingmaker.ResourceLinks.PrefabLink(),
             };
 
-            // ★ 施法后自动移除：照抄原版「法术大师·专注法术」的范式
-            //   （SpellMasterFocusedSpellsBuff.jbp）
+            // ★ 合格法术施放后移除（自建组件，判定见 AbilityXHelper.IsEligible）
             //
-            //   AddAbilityUseTrigger {
-            //       AfterCast = true,                       ← 施法完成后触发（不是施法瞬间）
-            //       CheckAbilityType = true, Type = Spell,  ← 只对「法术」生效，戏法等不算
-            //       Action = ContextActionRemoveSelf        ← 移除自己
-            //   }
-            //
-            // 为什么不自己订阅 RuleCastSpell：
-            // 原版已有这个组件、已被大量职业使用（法术大师 / 博大吾师等），
-            // 且它内置了「施法者必须是自己」(OnAbilityEffectApplied 里的 maybeCaster != Owner 判断)
-            // 与「施法完成后才触发」两个我们恰好需要的约束。
-            //
-            // 注意：这一步的判定只到「是不是法术」。
-            // Q1 的「法术书归属职业 == 法师」要用第 1 步的自建组件补，
-            // 本步刻意不加，以保持「只验证生命周期」的纯净性。
-            var removeSelf = new Kingmaker.UnitLogic.Mechanics.Actions.ContextActionRemoveSelf
+            // 曾用过原版 AddAbilityUseTrigger + ContextActionRemoveSelf，但它的
+            // CheckAbilityType 只能判断「是不是法术」，无法表达 Q1 要求的
+            // 「法术书归属职业 == 法师」，会误吃戏法与术士/牧师法术，故改用自建组件。
+            var consume = new AbilityXConsumeOnCast
             {
-                name = "$ContextActionRemoveSelf$AbilityX_0",
+                name = "$AbilityXConsumeOnCast$AbilityX_0",
             };
-            var removeTrigger = new AddAbilityUseTrigger
-            {
-                name = "$AddAbilityUseTrigger$AbilityX_1",
-                AfterCast = true,
-                ActionsOnAllTargets = false,
-                ActionsOnTarget = false,
-                FromSpellbook = false,
-                ForOneSpell = false,
-                ForMultipleSpells = false,
-                CheckAbilityType = true,
-                Type = AbilityType.Spell,
-                MinSpellLevel = false,
-                ExactSpellLevel = false,
-                CheckDescriptor = false,
-                CheckAoE = false,
-                CheckSpellSchool = false,
-                CheckRange = false,
-                CheckSourceItemType = false,
-                UseCastRule = false,
-                OnlyOnce = false,
-                OncePerContext = false,
-            };
-            removeTrigger.Action = new Kingmaker.ElementsSystem.ActionList();
-            removeTrigger.Action.Actions = new Kingmaker.ElementsSystem.GameAction[] { removeSelf };
 
-            buff.ComponentsArray = new BlueprintComponent[] { removeTrigger };
+            // 临时诊断探针（第 0 步专用，验证通过后删除）
+            var probe = new AbilityXDebugProbe
+            {
+                name = "$AbilityXDebugProbe$AbilityX_2",
+            };
+
+            buff.ComponentsArray = new BlueprintComponent[] { consume, probe };
 
             // 组件 name 必须唯一非空（05 踩坑 #1），赋值后必须回填 OwnerBlueprint（05 踩坑 #2）
             foreach (var c in buff.ComponentsArray)

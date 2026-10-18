@@ -44,6 +44,21 @@ class Verify
         CheckField(game, "Kingmaker.Blueprints.Facts.BlueprintUnitFact", "m_Description");
 
         Console.WriteLine();
+        Console.WriteLine("=== 能力X 依赖的类型与字段 ===");
+        // 合格判定用到的属性链：spell.Spellbook.Blueprint.CharacterClass
+        CheckType(game, "Kingmaker.UnitLogic.Abilities.AbilityData", "AbilityData");
+        CheckType(game, "Kingmaker.Blueprints.Classes.Spells.BlueprintSpellbook", "BlueprintSpellbook");
+        CheckProperty(game, "Kingmaker.UnitLogic.Abilities.AbilityData", "Spellbook", "AbilityData.Spellbook");
+        CheckProperty(game, "Kingmaker.UnitLogic.Abilities.AbilityData", "SpellLevel", "AbilityData.SpellLevel");
+        CheckProperty(game, "Kingmaker.Blueprints.Classes.Spells.BlueprintSpellbook", "CharacterClass", "BlueprintSpellbook.CharacterClass");
+        // 资源上限 / 组件字段
+        CheckField(game, "Kingmaker.Blueprints.BlueprintAbilityResource", "m_MaxAmount");
+        CheckField(game, "Kingmaker.UnitLogic.Abilities.Components.CasterCheckers.AbilityCasterHasNoFacts", "m_Facts");
+        CheckField(game, "Kingmaker.UnitLogic.Mechanics.Actions.ContextActionApplyBuff", "m_Buff");
+        // Buff 移除路径依赖（缺了会 NRE）
+        CheckField(game, "Kingmaker.UnitLogic.Buffs.Blueprints.BlueprintBuff", "FxOnRemove");
+
+        Console.WriteLine();
         Console.WriteLine("=== 嵌套枚举 StatGetter.ValueType ===");
         var sg = game.Find("Kingmaker.EntitySystem.Properties.Getters.StatGetter", false);
         var nested = sg?.NestedTypes.FirstOrDefault(t => t.Name == "ValueType");
@@ -91,6 +106,36 @@ class Verify
         }
 
         Console.WriteLine($"  [缺失] {t.Name}.{field}（含基类）");
+        missing++;
+    }
+
+    static void CheckType(ModuleDefMD mod, string typeName, string label)
+    {
+        var t = mod.Find(typeName, false);
+        if (t == null) { Console.WriteLine($"  [缺失] {label}: 类型不存在"); missing++; return; }
+        Console.WriteLine($"  [OK] {label}");
+    }
+
+    static void CheckProperty(ModuleDefMD mod, string typeName, string propName, string label)
+    {
+        var t = mod.Find(typeName, false);
+        if (t == null) { Console.WriteLine($"  [缺失] {label}: 类型不存在"); missing++; return; }
+
+        // 逐级向上查基类
+        var cur = t;
+        while (cur != null)
+        {
+            var p = cur.Properties.FirstOrDefault(x => x.Name == propName);
+            if (p != null)
+            {
+                string owner = cur == t ? t.Name.String : $"{t.Name.String}(继承自 {cur.Name.String})";
+                Console.WriteLine($"  [OK] {owner}.{propName}  ({p.PropertySig.RetType.TypeName})");
+                return;
+            }
+            cur = cur.BaseType?.ResolveTypeDef();
+        }
+
+        Console.WriteLine($"  [缺失] {t.Name}.{propName}（含基类）");
         missing++;
     }
 
