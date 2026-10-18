@@ -137,12 +137,85 @@ namespace WizardArchetype
             {
                 Main.Log?.Log("[特殊纠缠] 专注通过，移除特殊纠缠");
                 Buff?.Remove();
+                return;
             }
-            else
+
+            // §6.4：专注失败 → 法术失效（引擎原生处理：UnitUseAbility.ConcentrationCheckFailed）
+            //              角色受到 1d2 点体质伤害；同一轮内最多结算一次
+            Main.Log?.Log("[特殊纠缠] 专注失败，法术失效");
+            ApplyConstitutionDamage();
+        }
+
+        /// <summary>
+        /// 专注失败：1d2 点体质伤害，同一轮内最多一次（§6.4）。
+        ///
+        /// 用引擎的属性伤害管线 RuleDealStatDamage，而不是直接改属性值：
+        ///   - 走规则系统 ⇒ 会正常参与伤害统计、免疫判定、战斗日志；
+        ///   - 直接改 Stats 会绕过所有机制，属于暗改。
+        ///
+        /// 同轮保护：按「游戏时间 / 6 秒」估算轮次，同一轮内只结算一次。
+        /// </summary>
+        private void ApplyConstitutionDamage()
+        {
+            var unit = Owner;
+            if (unit == null) return;
+
+            int round = CurrentRound();
+
+            if (round >= 0 && s_LastDamageRound.TryGetValue(unit, out RoundMark last) && last.Round == round)
             {
-                // §6.4：专注失败 → 法术失效（引擎原生处理：ConcentrationCheckFailed）
-                // 体质伤害见后续步骤（需要接入属性伤害管线）。
-                Main.Log?.Log("[特殊纠缠] 专注失败，法术失效");
+                Main.Log?.Log("[特殊纠缠] 本轮已结算过体质伤害，跳过");
+                return;
+            }
+
+            if (round >= 0)
+            {
+                s_LastDamageRound.Remove(unit);
+                s_LastDamageRound.Add(unit, new RoundMark { Round = round });
+            }
+
+            try
+            {
+                var rule = new Kingmaker.RuleSystem.Rules.RuleDealStatDamage(
+                    unit,
+                    unit,
+                    Kingmaker.EntitySystem.Stats.StatType.Constitution,
+                    new Kingmaker.RuleSystem.DiceFormula(1, Kingmaker.RuleSystem.DiceType.D2),
+                    0);
+
+                var game = Kingmaker.Game.Instance;
+                if (game == null || game.Rulebook == null) return;
+
+                game.Rulebook.TriggerEvent<Kingmaker.RuleSystem.Rules.RuleDealStatDamage>(rule);
+
+                Main.Log?.Log($"[特殊纠缠] 专注失败代价：1d2 体质伤害（实际 {rule.Result}）");
+                AbilityXScope.AcceptanceHook("X.EntangleConDamage", rule.Result);
+            }
+            catch (Exception e)
+            {
+                Main.Log?.Warning("[特殊纠缠] 体质伤害结算失败：" + e.Message);
+            }
+        }
+
+        /// <summary>每个单位上次结算体质伤害的轮次（CWT 的 value 必须是引用类型，用包装类）。</summary>
+        private sealed class RoundMark { public int Round; }
+
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<
+            Kingmaker.EntitySystem.Entities.UnitEntityData, RoundMark> s_LastDamageRound =
+            new System.Runtime.CompilerServices.ConditionalWeakTable<
+                Kingmaker.EntitySystem.Entities.UnitEntityData, RoundMark>();
+
+        private static int CurrentRound()
+        {
+            try
+            {
+                var game = Kingmaker.Game.Instance;
+                if (game == null || game.Player == null) return -1;
+                return (int)(game.Player.GameTime.TotalSeconds / 6.0);
+            }
+            catch (Exception)
+            {
+                return -1;
             }
         }
 

@@ -204,6 +204,16 @@ class Verify
             "GameHelper.RemoveBuff(UnitEntityData, BlueprintBuff)");
 
         Console.WriteLine();
+        Console.WriteLine("=== 阶段4：专注失败的体质伤害（C13/C14）===");
+        CheckType(game, "Kingmaker.RuleSystem.Rules.RuleDealStatDamage", "RuleDealStatDamage");
+        CheckMethodWithParams(game, "Kingmaker.RuleSystem.Rules.RuleDealStatDamage", ".ctor",
+            new[] { "Kingmaker.EntitySystem.Entities.UnitEntityData", "Kingmaker.EntitySystem.Entities.UnitEntityData",
+                    "Kingmaker.EntitySystem.Stats.StatType", "Kingmaker.RuleSystem.DiceFormula", "System.Int32" },
+            "RuleDealStatDamage 构造器");
+        CheckEnumMember(game, "Kingmaker.EntitySystem.Stats.StatType", "Constitution");
+        CheckEnumMember(game, "Kingmaker.RuleSystem.DiceType", "D2");
+
+        Console.WriteLine();
         Console.WriteLine("=== 嵌套枚举 StatGetter.ValueType ===");
         var sg = game.Find("Kingmaker.EntitySystem.Properties.Getters.StatGetter", false);
         var nested = sg?.NestedTypes.FirstOrDefault(t => t.Name == "ValueType");
