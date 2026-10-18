@@ -416,6 +416,19 @@ namespace WizardArchetype
                 AssetGuid = BlueprintGuid.Parse(guid),
                 Ranks = 1,
                 IsClassFeature = true,
+
+                // ★ 关键：升级时必须重算上下文。
+                //
+                // 不带这个标志的后果（实测）：旧存档里先攻/专注的加值存在，
+                // 但**升级后不更新**、**洗点后也不更新** —— 因为 ContextRankConfig
+                // 的结果缓存在 MechanicsContext 里，而 EntityFact.Reapply()
+                // （EntityFact.cs:552-568，内部调 maybeContext.Recalculate()）
+                // 只有在 BlueprintFeature.ReapplyOnLevelUp == true 时才会被升级流程触发
+                // （BlueprintFeature.cs:147 该字段默认 false）。
+                //
+                // 本 MOD 的「职业先攻」「专注训练」「智力先攻（封顶到职业等级）」
+                // 都依赖 ContextRankConfig / PropertyCalculator 现算，所以必须开启。
+                ReapplyOnLevelUp = true,
             };
 
             ReflectionFields.Set(feat, "m_DisplayName",

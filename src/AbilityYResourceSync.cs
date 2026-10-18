@@ -65,8 +65,47 @@ namespace WizardArchetype
         }
 
         /// <summary>
+        /// 取单位身上的 UnitAbilityResource。
+        /// UnitAbilityResourceCollection.GetResource 是 private，用反射访问其内部字典。
+        /// </summary>
+        private static UnitAbilityResource FindResource(
+            Kingmaker.UnitLogic.UnitAbilityResourceCollection collection,
+            Kingmaker.Blueprints.BlueprintScriptableObject blueprint)
+        {
+            if (collection == null || blueprint == null) return null;
+
+            try
+            {
+                var field = typeof(Kingmaker.UnitLogic.UnitAbilityResourceCollection)
+                    .GetField("m_Resources", System.Reflection.BindingFlags.Instance |
+                                             System.Reflection.BindingFlags.NonPublic);
+                var dict = field?.GetValue(collection) as
+                    System.Collections.Generic.Dictionary<Kingmaker.Blueprints.BlueprintScriptableObject,
+                        UnitAbilityResource>;
+                if (dict == null) return null;
+
+                UnitAbilityResource r;
+                return dict.TryGetValue(blueprint, out r) ? r : null;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
         /// 把资源量写成公式值。
-        /// refill = true 时直接设为上限；否则只保证不超过上限。
+        ///
+        /// ★ 必须直接写 UnitAbilityResource.Amount，不能用 Restore。
+        ///   原因（UnitAbilityResourceCollection.cs:126-149）：
+        ///     Restore(blueprint, amount) 的最终值是
+        ///         Math.Min(resource.Amount + amount, resource.GetMaxAmount(owner))
+        ///     而 GetMaxAmount 读的是**蓝图** m_MaxAmount（我们设为 BaseValue=0），
+        ///     所以无论 amount 给多少，结果都被夹到 0 —— 这就是「休息后次数仍为 0」的原因。
+        ///   直接写 Amount 才能表达「上限由本组件计算」的语义。
+        ///
+        ///   副作用：绕过 IUnitAbilityResourceHandler 通知，UI 可能不刷新。
+        ///   因此写完手动 RaiseEvent 一次，保证行动栏计数更新。
         /// </summary>
         private void Sync(bool refill)
         {
@@ -80,19 +119,35 @@ namespace WizardArchetype
                 if (collection == null) return;
 
                 int current = collection.GetResourceAmount(res);
+                int target = refill ? max : Math.Min(current, max);
 
-                if (refill)
+                if (current == target)
                 {
-                    // 先清到 0 再补到 max，避免 Restore 的「不超上限」逻辑残留
-                    if (current > 0) collection.Spend(res, current);
-                    if (max > 0) collection.Restore(res, max);
-                }
-                else if (current > max)
-                {
-                    collection.Spend(res, current - max);
+                    AbilityXScope.AcceptanceHook("X.YMaxUses", max);
+                    return;
                 }
 
-                Main.Log?.Log($"[能力Y] 次数同步：{current} → {Math.Min(current, max)} / {max}" +
+                var unitRes = FindResource(collection, res);
+                if (unitRes == null)
+                {
+                    // 资源还没挂到单位上（例如特性尚未生效）—— 先登记，下次再同步
+                    collection.Add(res, false);
+                    unitRes = FindResource(collection, res);
+                    if (unitRes == null) return;
+                }
+
+                unitRes.Amount = target;
+
+                // 手动通知 UI（因为绕过了 Restore/Spend 的内部事件）。
+                // IUnitAbilityResourceHandler 不是 IUnitSubscriber，只能用全局重载。
+                try
+                {
+                    Kingmaker.PubSubSystem.EventBus.RaiseEvent<IUnitAbilityResourceHandler>(
+                        h => h.HandleAbilityResourceChange(Owner, unitRes, current));
+                }
+                catch (Exception) { }
+
+                Main.Log?.Log($"[能力Y] 次数同步：{current} → {target} / {max}" +
                               $"（INT 调整值 {Owner.Stats.Intelligence.BonusWithoutTemp}，" +
                               $"法师等级 {AbilityY.GetWizardLevel(Owner)}）");
 
