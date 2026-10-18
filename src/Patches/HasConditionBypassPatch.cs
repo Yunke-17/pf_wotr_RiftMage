@@ -42,15 +42,6 @@ namespace WizardArchetype.Patches
 
             try
             {
-                // ① 特殊纠缠：仅在「引擎正在做施法专注判定」的那一瞬间，
-                //    让 SpellCastingIsDifficult 成立，从而触发 RuleCheckConcentration。
-                //    （特殊纠缠刻意不挂 Entangled，否则会减速且被行动自如免疫。）
-                if (ForceConcentrationPatch.ShouldForceDifficult(__instance, condition))
-                {
-                    __result = true;
-                    return;
-                }
-
                 // ★ 性能：HasCondition 是热路径（移速计算、动作限制、施法检查每帧都会问）。
                 //   实测一轮战斗触发 79,223 次，因此这里必须尽早短路。
                 //   只有在「因为免疫而不成立」时才有必要旁路 —— 条件计数为 0 的情况

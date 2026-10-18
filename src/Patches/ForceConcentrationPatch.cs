@@ -1,105 +1,113 @@
 using System;
 using System.Runtime.CompilerServices;
 using HarmonyLib;
+using Kingmaker;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.UnitLogic;
+using Kingmaker.RuleSystem.Rules.Abilities;
 using Kingmaker.UnitLogic.Commands;
+using Kingmaker.Utility;
 
 namespace WizardArchetype.Patches
 {
     /// <summary>
-    /// 补丁 H —— 让「特殊纠缠」真正触发专注检定。
+    /// 补丁 H —— 特殊纠缠：直接做一次「专属专注检定」。
     ///
-    /// ========== 问题 ==========
+    /// ========== 为什么需要它 ==========
     ///
-    /// 引擎只有在下列条件之一成立时才会掷专注检定
-    /// （UnitUseAbility.MakeConcentrationCheckIfCastingIsDifficult，:1165-1172）：
-    ///     HasCondition(Entangled)
-    ///     HasCondition(SpellCastingIsDifficult)
-    ///     HasCondition(SpellCastingIsVeryDifficult)
+    /// UnitUseAbility.MakeConcentrationCheckIfCastingIsDifficult（:1165-1172）只在
+    /// HasCondition(Entangled / SpellCastingIsDifficult / SpellCastingIsVeryDifficult)
+    /// 成立时才发起 RuleCheckConcentration。
+    /// 特殊纠缠刻意不挂 Entangled（会减速、会被行动自如免疫），也不该伪装成
+    /// 「施法困难」这种通用条件 —— 所以引擎不会替我们掷。
     ///
-    /// 而特殊纠缠**刻意不挂 Entangled**（挂上会减速，且会被行动自如免疫）。
-    /// 结果就是：我们在 RuleCheckConcentration 上写的 CustomDC 永远没用 ——
-    /// 因为引擎压根不发起那一次检定。
+    /// ========== 做法（不再伪装条件，直接触发）==========
     ///
-    /// ========== 解法 ==========
+    /// 在这个方法前面插入一段：
+    ///   若「该单位有特殊纠缠」且「这一发是合格的法师法术」
+    ///     → 自己构造并 Trigger 一次 RuleCheckConcentration
+    ///        DC 用专属公式：min(32, 25 + round(3(L-1)/7))，L = 法师等级
+    ///     → 失败则把 UnitUseAbility.ConcentrationCheckFailed 置为 true
+    ///   然后仍返回 true，让原方法继续跑：
+    ///     它第一行就是 if (this.ConcentrationCheckFailed) return;
+    ///     失败时立即退出；成功时它自己去跑法术愚弄/阻碍魔法/Spellblight 等检查，
+    ///     并因为没有任何「施法困难」条件而**不会**再掷一次专注 —— 不会双骰。
     ///
-    /// 不改原方法、不跳过它，只在它执行的那一刻「临时让引擎看到施法困难」：
-    ///   Prefix  : 置一个 [ThreadStatic] 标志，并记下本次施放的法术
-    ///   Postfix : 清掉标志
-    ///   期间的 UnitState.HasCondition(SpellCastingIsDifficult) 由补丁 G 返回 true
+    /// 好处：
+    ///   - 不需要 ThreadStatic 伪装、不需要改 HasCondition 的语义；
+    ///   - 原方法的其它检查一条都不丢；
+    ///   - DC 公式由本 MOD 完全掌控（这就是用户说的「独属于该 debuff 的专注」）。
     ///
-    /// 为什么用「临时伪装条件」而不是自己跑一次检定：
-    ///   - 原方法里还有法术愚弄、阻碍魔法、Spellblight 等多个检查，
-    ///     自己跑一次就得复制这些逻辑，容易漏；
-    ///   - 让引擎照常走，它自己会调 RuleCheckConcentration，
-    ///     我们的 SpecialEntangleConcentration 再把 CustomDC 改成文档公式的 DC。
-    ///
-    /// 为什么不会影响别的法术/别的单位：
-    ///   - 标志只在这一次调用期间为 true（ThreadStatic，战斗在主线程）；
-    ///   - 还要求「该单位身上有我们的特殊纠缠」且「这一发是合格的法师法术」。
+    /// 检定成功率与「专注通过后移除纠缠」「失败掉 1d2 体质」等后果，
+    /// 仍由 Buff 上的 SpecialEntangleConcentration 组件处理
+    /// （它订阅同一个 RuleCheckConcentration）。
     /// </summary>
     [HarmonyPatch(typeof(UnitUseAbility), "MakeConcentrationCheckIfCastingIsDifficult")]
     internal static class ForceConcentrationPatch
     {
-        [ThreadStatic] private static bool s_InCheck;
-        [ThreadStatic] private static AbilityDataLike s_Ability;
-
-        /// <summary>简化持有 AbilityData，避免在 [ThreadStatic] 上声明泛型/游戏类型引发的初始化问题。</summary>
-        private sealed class AbilityDataLike
-        {
-            public Kingmaker.UnitLogic.Abilities.AbilityData Ability;
-        }
-
         [HarmonyPrefix]
-        private static void Prefix(UnitUseAbility __instance)
+        private static bool Prefix(UnitUseAbility __instance)
         {
-            s_InCheck = false;
-            s_Ability = null;
+            if (!Main.Enabled || __instance == null) return true;
+
             try
             {
-                if (!Main.Enabled || __instance == null) return;
-
                 var ability = __instance.Ability;
-                if (ability == null || !AbilityXHelper.IsEligible(ability)) return;
-
                 var unit = __instance.Executor;
-                if (unit == null || !HasSpecialEntangle(unit)) return;
+                if (ability == null || unit == null) return true;
 
-                s_Ability = new AbilityDataLike { Ability = ability };
-                s_InCheck = true;
+                // 只对「有特殊纠缠」「合格法师法术」两个条件都成立时生效
+                if (!HasSpecialEntangle(unit)) return true;
+                if (!AbilityXHelper.IsEligible(ability)) return true;
 
-                if (Main.DebugLog)
+                int level = GetWizardLevel(unit);
+                int dc = SpecialEntangleConcentration.GetConcentrationDC(level);
+
+                var rule = new RuleCheckConcentration(unit, ability)
                 {
-                    Main.Log?.Log($"[特殊纠缠] 触发专注检定：{ability.Blueprint?.name}");
+                    CustomDC = dc,
+                };
+
+                var game = Game.Instance;
+                if (game == null || game.Rulebook == null) return true;
+
+                bool success = game.Rulebook.TriggerEvent<RuleCheckConcentration>(rule).Success;
+
+                Main.Log?.Log($"[特殊纠缠] 专属专注检定：{ability.Blueprint?.name}，" +
+                              $"法师等级 {level}，DC {dc}，结果 {(success ? "通过" : "失败")}");
+
+                AbilityXScope.AcceptanceHook("X.EntangleCheckRan", true);
+                AbilityXScope.AcceptanceHook("X.EntangleCheckDC", dc);
+                AbilityXScope.AcceptanceHook("X.EntangleCheckPassed", success);
+
+                if (!success)
+                {
+                    // ConcentrationCheckFailed 是 public get / private set，用 Traverse 写
+                    Traverse.Create(__instance).Property("ConcentrationCheckFailed").SetValue(true);
                 }
+
+                // 让原方法继续：失败时它会因 ConcentrationCheckFailed 立即返回；
+                // 成功时它继续跑其它检查，且不会重复掷专注（没有施法困难类条件）。
+                return true;
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
-                Main.Log?.Warning("[特殊纠缠] 强制专注前缀异常：" + e.Message);
-                s_InCheck = false;
-                s_Ability = null;
+                Main.Log?.Warning("[特殊纠缠] 专属专注检定异常，已放行原逻辑：" + e.Message);
+                return true;
             }
         }
 
-        [HarmonyPostfix]
-        private static void Postfix()
+        private static int GetWizardLevel(UnitEntityData unit)
         {
-            s_InCheck = false;
-            s_Ability = null;
-        }
-
-        /// <summary>补丁 G 调用：此刻是否应该把 SpellCastingIsDifficult 视作成立。</summary>
-        internal static bool ShouldForceDifficult(UnitState state, UnitCondition condition)
-        {
-            if (!s_InCheck) return false;
-            if (condition != UnitCondition.SpellCastingIsDifficult) return false;
-            if (state == null || state.Owner == null) return false;
-
-            var unit = state.Owner.Unit;
-            if (unit == null || !HasSpecialEntangle(unit)) return false;
-
-            return s_Ability != null && s_Ability.Ability != null && AbilityXHelper.IsEligible(s_Ability.Ability);
+            try
+            {
+                var wiz = WizardArchetypeBlueprints.WizardClass;
+                if (wiz == null) return 1;
+                return Math.Max(1, unit.Progression.GetClassLevel(wiz));
+            }
+            catch (Exception)
+            {
+                return 1;
+            }
         }
 
         // ------------------------------------------------------------------
