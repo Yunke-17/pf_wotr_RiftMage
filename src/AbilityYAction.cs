@@ -8,37 +8,32 @@ using Kingmaker.UnitLogic.Mechanics.Actions;
 namespace WizardArchetype
 {
     /// <summary>
-    /// 能力 Y 的具体动作：修改净层数 S。
+    /// 能力 Y 的具体动作：修改层数 N。
     ///
-    /// ========== 为什么继承 ContextAction ==========
+    /// ========== 方向（用户 2026-10-19 确认） ==========
     ///
-    /// ContextAction 是 GameAction 的一种，能被 AbilityEffectRunAction 的
-    /// ActionList 直接执行（与 ContextActionApplyBuff 同类）。
-    /// 这样整个「点能力 → 改 S」链路都在蓝图里完成，不需要额外补丁。
+    ///   以「+CL」为基准：
+    ///     Up   ：N += 1 → ΔCL = +N，ΔDC = -2N     （+1 层 = CL+1 / DC-2）
+    ///     Down ：N -= 1 → ΔCL = +N，ΔDC = -2N     （-1 层 = CL-1 / DC+2）
+    ///     Cancel：N = 0
     ///
-    /// ========== 净层数规则（§9.3 / §9.4） ==========
+    /// ========== 前置校验已经在灰显里做了 ==========
     ///
-    ///   ModeA  : S += 1（上限 +2）；达到上限时不可再选（见 CanUse 检查）
-    ///   ModeB  : S -= 1（下限 -2）
-    ///   Cancel : S = 0（§9.4，消耗 1 次使用次数，不返还）
+    /// 互斥与上限由 AbilityYRestriction（IAbilityCasterRestriction）处理：
+    /// 不可用时按钮直接灰显，玩家点不到。
+    /// 所以这里**不需要**再拒绝并退还次数 —— 那是上一版的设计，
+    /// 现在改成了「先灰显，点不到」，比「点了再退还」干净。
     ///
-    /// ========== 前置限制怎么做的 ==========
-    ///
-    /// 「达到 S=+2 后不能继续用模式 A」需要按运行期状态灰显按钮。
-    /// 引擎的 Prerequisite 体系只能读静态/蓝图条件，读不到我们的 S，
-    /// 因此这里在 RunAction 里做**运行时拒绝**：
-    ///   - 已到上限时点击无效，并记日志说明；
-    ///   - 使用次数已由 AbilityResourceLogic 扣除，所以拒绝时必须把次数**还回去**，
-    ///     否则玩家会白白浪费一次。
-    /// 灰显（按钮变灰）作为后续增强项，不阻塞功能。
+    /// 但保留一层防御：若因竞态真的越界，只记日志、不改数值（次数已在
+    /// AbilityResourceLogic 里扣掉，此处不退还，因为灰显已保证正常路径不会发生）。
     /// </summary>
     [TypeId("a1b2c3d4e5f6478990a1b2c3d4e5f650")]
     internal class AbilityYAction : ContextAction
     {
         internal enum Kind
         {
-            ModeA,
-            ModeB,
+            Up,
+            Down,
             Cancel,
         }
 
@@ -54,62 +49,46 @@ namespace WizardArchetype
             var unit = Target != null ? Target.Unit : null;
             if (unit == null) return;
 
-            AbilityY.Track(unit);
-
-            int s = AbilityY.GetS(unit);
-            int before = s;
+            int before = AbilityY.GetN(unit);
+            int after = before;
 
             switch (Action)
             {
-                case Kind.ModeA:
-                    if (s >= AbilityY.MaxS) { RejectAndRefund(unit, "已达上限 S=+2，不能再用模式 A"); return; }
-                    s += 1;
+                case Kind.Up:
+                    if (before >= AbilityY.MaxStack)
+                    {
+                        Main.Log?.Warning($"[能力Y] 越界防御：N={before} 已达上限，忽略 +1");
+                        return;
+                    }
+                    after = before + 1;
                     break;
 
-                case Kind.ModeB:
-                    if (s <= -AbilityY.MaxS) { RejectAndRefund(unit, "已达下限 S=-2，不能再用模式 B"); return; }
-                    s -= 1;
+                case Kind.Down:
+                    if (before <= -AbilityY.MaxStack)
+                    {
+                        Main.Log?.Warning($"[能力Y] 越界防御：N={before} 已达下限，忽略 -1");
+                        return;
+                    }
+                    after = before - 1;
                     break;
 
                 case Kind.Cancel:
-                    if (s == 0) { RejectAndRefund(unit, "当前没有施法参数修正，无需取消"); return; }
-                    s = 0;
+                    if (before == 0)
+                    {
+                        Main.Log?.Warning("[能力Y] 越界防御：N=0，无需取消");
+                        return;
+                    }
+                    after = 0;
                     break;
             }
 
-            AbilityY.SetS(unit, s);
+            AbilityY.SetN(unit, after);
 
-            Main.Log?.Log($"[能力Y] {Action}：S {before} → {s}");
+            Main.Log?.Log($"[能力Y] {Action}：N {before} → {after}" +
+                          $"（ΔCL {after:+0;-0}，ΔDC {-2 * after:+0;-0}）");
 
             AbilityXScope.AcceptanceHook("X.YMode", Action.ToString());
-            AbilityXScope.AcceptanceHook("X.YDelta", s - before);
-        }
-
-        /// <summary>
-        /// 拒绝本次使用并把已扣的次数还回去。
-        ///
-        /// AbilityResourceLogic 在能力触发**之前**就已扣除资源，
-        /// 所以运行时拒绝必须显式退还，否则玩家白掉一次。
-        /// </summary>
-        private static void RejectAndRefund(UnitEntityData unit, string reason)
-        {
-            Main.Log?.Log("[能力Y] 拒绝：" + reason);
-
-            try
-            {
-                var res = AbilityYBlueprints.Resource;
-                if (res != null)
-                {
-                    unit.Descriptor.Resources.Restore(res, 1);
-                    Main.Log?.Log("[能力Y] 已退还 1 次使用次数");
-                }
-            }
-            catch (Exception e)
-            {
-                Main.Log?.Warning("[能力Y] 退还次数失败：" + e.Message);
-            }
-
-            AbilityXScope.AcceptanceHook("X.YRejected", reason);
+            AbilityXScope.AcceptanceHook("X.YDelta", after - before);
         }
     }
 }
