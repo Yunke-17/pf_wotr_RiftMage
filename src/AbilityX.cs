@@ -57,6 +57,8 @@ namespace WizardArchetype
             SpecialEntangleBlueprints.Create(cache);
             // 能力Y 蓝图（3 级特性）
             AbilityYBlueprints.Create(cache);
+            // 能力Z 蓝图（基础 CL 7 起）
+            AbilityZ.Create(cache);
 
             // 1) 资源（每次休息 1 次）
             Resource = CreateResource(cache);

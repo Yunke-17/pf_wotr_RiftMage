@@ -82,6 +82,14 @@ namespace WizardArchetype
                 result.Add((3, abilityY));
             }
 
+            // E10–E17：能力 Z「透支充能」—— 按基础 CL 解锁（7 起），
+            // 因此挂在 1 级特性表里，靠可用次数为 0 时自动灰显来表达「尚未获得」。
+            var abilityZ = AbilityZ.Feature;
+            if (abilityZ != null)
+            {
+                result.Add((1, abilityZ));
+            }
+
             // E18：法师 5 级自动获得「瞬发法术」原版专长
             AddOriginal(result, cache, 5, QuickenSpellFeat, "瞬发法术");
 

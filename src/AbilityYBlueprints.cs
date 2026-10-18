@@ -48,6 +48,9 @@ namespace WizardArchetype
             CreateText();
             Resource = CreateResource(cache);
 
+            // 层数显示用 Buff（Buff 栏可见）
+            AbilityYDisplay.Create(cache);
+
             var up = CreateVariant(cache, AbilityY.GuidUp, "Up",
                 "+1 层：CL +1 / DC -2",
                 "施法者等级 +1，法术 DC -2。可与同方向叠加，最多 +2 层。\n迅捷动作，仅战斗中可用。",

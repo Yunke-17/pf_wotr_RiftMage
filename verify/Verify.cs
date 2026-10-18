@@ -241,6 +241,21 @@ class Verify
         CheckEnumMember(game, "Kingmaker.UnitLogic.UnitCondition", "SpellcastingForbidden");
 
         Console.WriteLine();
+        Console.WriteLine("=== 能力Z（§10）===");
+        CheckType(game, "Kingmaker.Blueprints.TurnBasedModifiers.AbilityIsFullRoundInTurnBased",
+            "AbilityIsFullRoundInTurnBased");
+        CheckField(game, "Kingmaker.Blueprints.TurnBasedModifiers.AbilityIsFullRoundInTurnBased",
+            "FullRoundIfTurnBased");
+        CheckEnumMember(game, "Kingmaker.UnitLogic.UnitCondition", "Exhausted");
+        CheckEnumMember(game, "Kingmaker.UnitLogic.UnitCondition", "Fatigued");
+        // 秒级时长施加：AddBuff 在 BuffCollection 上（UnitDescriptor.Buffs）
+        CheckMethodWithParams(game, "Kingmaker.UnitLogic.Buffs.BuffCollection", "AddBuff",
+            new[] { "Kingmaker.UnitLogic.Buffs.Blueprints.BlueprintBuff",
+                    "Kingmaker.EntitySystem.Entities.UnitEntityData",
+                    "System.Nullable`1", "Kingmaker.UnitLogic.Abilities.AbilityParams" },
+            "BuffCollection.AddBuff(buff, caster, TimeSpan?, AbilityParams)");
+
+        Console.WriteLine();
         Console.WriteLine("=== 嵌套枚举 StatGetter.ValueType ===");
         var sg = game.Find("Kingmaker.EntitySystem.Properties.Getters.StatGetter", false);
         var nested = sg?.NestedTypes.FirstOrDefault(t => t.Name == "ValueType");

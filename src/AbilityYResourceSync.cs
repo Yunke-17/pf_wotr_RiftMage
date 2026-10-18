@@ -68,7 +68,7 @@ namespace WizardArchetype
         /// 取单位身上的 UnitAbilityResource。
         /// UnitAbilityResourceCollection.GetResource 是 private，用反射访问其内部字典。
         /// </summary>
-        private static UnitAbilityResource FindResource(
+        internal static UnitAbilityResource FindResource(
             Kingmaker.UnitLogic.UnitAbilityResourceCollection collection,
             Kingmaker.Blueprints.BlueprintScriptableObject blueprint)
         {

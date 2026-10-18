@@ -85,6 +85,9 @@ namespace WizardArchetype
 
             Main.Log?.Log($"[能力Y] 层数 N = {n}（ΔCL = {n:+0;-0}，ΔDC = {-2 * n:+0;-0}）");
             AbilityXScope.AcceptanceHook("X.YN", n);
+
+            // Buff 栏显示（用户要求：效果要出现在角色 buff 栏）
+            AbilityYDisplay.Sync(unit, n);
         }
 
         internal static void Reset(UnitEntityData unit)
