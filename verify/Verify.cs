@@ -82,6 +82,23 @@ class Verify
         CheckProperty(game, "Kingmaker.UnitLogic.Spellbook", "CasterLevel", "Spellbook.CasterLevel");
 
         Console.WriteLine();
+        Console.WriteLine("=== 能力X 第2步：无视 SR ===");
+        // RuleCastSpell.Context 是只读**字段**（构造时创建），原版范式靠它置位
+        CheckField(game, "Kingmaker.RuleSystem.Rules.Abilities.RuleCastSpell", "Context");
+        // ForceIgnoreSpellResist 是 AbilityExecutionContext 的可写属性
+        CheckProperty(game, "Kingmaker.UnitLogic.Abilities.AbilityExecutionContext", "ForceIgnoreSpellResist",
+            "AbilityExecutionContext.ForceIgnoreSpellResist");
+        // SR 判定链读取 SourceAbilityContext（MechanicsContext.Root as AbilityExecutionContext）
+        CheckProperty(game, "Kingmaker.UnitLogic.Mechanics.MechanicsContext", "SourceAbilityContext",
+            "MechanicsContext.SourceAbilityContext");
+        // SR 检定规则本身
+        CheckType(game, "Kingmaker.RuleSystem.Rules.RuleSpellResistanceCheck", "RuleSpellResistanceCheck");
+        CheckProperty(game, "Kingmaker.RuleSystem.Rules.RuleSpellResistanceCheck", "IsSpellResisted",
+            "RuleSpellResistanceCheck.IsSpellResisted");
+        // 时序依据：AbilityExecutionProcess 是协程，SR 在后续帧的 Tick 里跑
+        CheckMethod(game, "Kingmaker.Controllers.AbilityExecutionProcess", "Tick", "AbilityExecutionProcess.Tick");
+
+        Console.WriteLine();
         Console.WriteLine("=== 嵌套枚举 StatGetter.ValueType ===");
         var sg = game.Find("Kingmaker.EntitySystem.Properties.Getters.StatGetter", false);
         var nested = sg?.NestedTypes.FirstOrDefault(t => t.Name == "ValueType");

@@ -160,15 +160,58 @@ namespace WizardArchetype
         }
 
         // ------------------------------------------------------------------
-        // consume：施法成功才消耗
+        // consume + 无视 SR（同一阶段，因为都要先确认「是这一发」）
         // ------------------------------------------------------------------
+
+        /// <summary>
+        /// 无视法术抗力（D10 / 说明书 §8.3）。
+        ///
+        /// 原版范式：宗师之杖 MetamagicRodMechanics.cs:99-106
+        ///     if (ForceIgnoreSpellResist &amp;&amp; evt.Context != null)
+        ///         evt.Context.ForceIgnoreSpellResist = true;
+        ///
+        /// SR 判定链第一项就是 !context.SourceAbilityContext.ForceIgnoreSpellResist
+        /// （RuleSpellResistanceCheck.cs:50-66），而 SourceAbilityContext 是
+        /// MechanicsContext.Root as AbilityExecutionContext —— 正是 RuleCastSpell.Context
+        /// 那个只读字段（RuleCastSpell.cs:129 构造时创建）。同一个对象，改得上。
+        ///
+        /// 时序：RuleCastSpell.OnTrigger 末尾的 Spell.Cast() 只**启动**
+        /// AbilityExecutionProcess 协程，真正的 SR 检定在后续帧的 Tick() 里
+        /// （AbilityExecutionProcess.cs:402）。所以 About/Did 阶段写都来得及。
+        ///
+        /// ★ 为什么写在 Scope 里而不是单独一个组件：
+        ///   独立组件拿不到本 Scope 的运行时 Data.Spell ——
+        ///   EntityFact.Components 是每个 Fact 实例各自的（EntityFact.cs:118 用
+        ///   SourceBlueprintComponentName 作键），而 SourceBlueprintComponent 是共享的蓝图对象。
+        ///   两个组件之间无法共享「当前瞄准哪一发」，只能放在同一个组件里。
+        /// </summary>
+        private void TryIgnoreSpellResistance(RuleCastSpell evt)
+        {
+            if (evt == null || evt.Spell == null || evt.Context == null) return;
+
+            AbilityData aimed = Data.Spell;
+            if (aimed == null) return;
+            if (!aimed.Equals(evt.Spell)) return;
+
+            // 已被别人（宗师之杖等）设过就不重复处理
+            if (evt.Context.ForceIgnoreSpellResist) return;
+
+            evt.Context.ForceIgnoreSpellResist = true;
+            Main.Log?.Log($"[能力X] 无视 SR 已置位：{evt.Spell.Blueprint?.name}");
+        }
 
         public void OnEventAboutToTrigger(RuleCastSpell evt)
         {
+            // 预置一次：覆盖「即时生效、不走协程」的路径。
+            // 此时会话尚未判定成败，但只对本单位本窗口内瞄准的那一发置位，不会误伤。
+            TryIgnoreSpellResistance(evt);
         }
 
         public void OnEventDidTrigger(RuleCastSpell evt)
         {
+            // 再置一次（幂等），与原版 MetamagicRodMechanics 的时机一致。
+            TryIgnoreSpellResistance(evt);
+
             if (evt == null || evt.Spell == null)
             {
                 return;
@@ -210,6 +253,12 @@ namespace WizardArchetype
 
             Main.Log?.Log($"[能力X] 强化法术已成功施放，关闭窗口：{evt.Spell.Blueprint?.name}");
             Data.Spell = null;
+
+            // 该发的 SR 置位结果一并上报（置位在 Did 开头已完成）
+            if (evt.Context != null)
+            {
+                AcceptanceHook("X.SRIgnored", evt.Context.ForceIgnoreSpellResist);
+            }
 
             Buff?.Remove();
 
