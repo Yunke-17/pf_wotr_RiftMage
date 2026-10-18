@@ -40,6 +40,10 @@ namespace WizardArchetype
                 new[] { typeof(Kingmaker.UnitLogic.UnitCondition) },
                 "补丁G 特殊状态免疫旁路");
 
+            // 补丁 H：特殊纠缠强制专注检定（private 方法，按名取）
+            Check(typeof(Kingmaker.UnitLogic.Commands.UnitUseAbility),
+                  "MakeConcentrationCheckIfCastingIsDifficult", "补丁H 强制专注检定");
+
             // 路线 C：反射层字段校验（缺失会记 Error，避免数值静默算错）
             ReflectionFields.RunSelfCheck();
         }

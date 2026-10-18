@@ -57,6 +57,13 @@ namespace WizardArchetype
                 name = "$SpecialEntangleConcentration$SpecialEntangled_0",
             };
 
+            // 登记「该单位身上有特殊纠缠」，供补丁 H 判断是否该强制专注检定。
+            // 不能用 HasCondition(Entangled) 判断 —— 特殊纠缠刻意不挂那个条件。
+            var marker = new SpecialEntangleMarker
+            {
+                name = "$SpecialEntangleMarker$SpecialEntangled_3",
+            };
+
             var combatTrigger = new CombatStateTrigger
             {
                 name = "$CombatStateTrigger$SpecialEntangled_1",
@@ -78,7 +85,7 @@ namespace WizardArchetype
                 Frequency = DurationRate.Rounds,
                 Ranks = 0,
                 IsClassFeature = false,
-                ComponentsArray = new BlueprintComponent[] { concentration, combatTrigger },
+                ComponentsArray = new BlueprintComponent[] { concentration, marker, combatTrigger },
                 FxOnRemove = new Kingmaker.ResourceLinks.PrefabLink(),
             };
 
@@ -94,6 +101,23 @@ namespace WizardArchetype
             SpecialEntangled = buff;
 
             Main.Log?.Log("WizardArchetype: 已创建「特殊纠缠」蓝图");
+        }
+    }
+
+    /// <summary>
+    /// 特殊纠缠：登记到 ForceConcentrationPatch 的运行期表。
+    /// 补丁 H 据此判断「这一次施法该不该强制专注检定」。
+    /// </summary>
+    internal class SpecialEntangleMarker : UnitBuffComponentDelegate
+    {
+        protected override void OnTurnOn()
+        {
+            Patches.ForceConcentrationPatch.SetEntangled(Owner, true);
+        }
+
+        protected override void OnTurnOff()
+        {
+            Patches.ForceConcentrationPatch.SetEntangled(Owner, false);
         }
     }
 
