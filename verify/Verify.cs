@@ -256,6 +256,18 @@ class Verify
             "BuffCollection.AddBuff(buff, caster, TimeSpan?, AbilityParams)");
 
         Console.WriteLine();
+        Console.WriteLine("=== D15：突破描述符类魔法免疫（补丁J）===");
+        CheckType(game, "Kingmaker.UnitLogic.Parts.UnitPartSpellResistance", "UnitPartSpellResistance");
+        CheckMethodWithParams(game, "Kingmaker.UnitLogic.Parts.UnitPartSpellResistance", "CanApply",
+            new[] { "SpellImmunity", "Kingmaker.UnitLogic.Mechanics.MechanicsContext" },
+            "CanApply(SpellImmunity, MechanicsContext)");
+        CheckEnumMember(game, "Kingmaker.UnitLogic.Parts.SpellImmunityType", "SpellDescriptor");
+        CheckProperty(game, "Kingmaker.UnitLogic.Parts.UnitPartSpellResistance/SpellImmunity", "Type",
+            "SpellImmunity.Type");
+        CheckProperty(game, "Kingmaker.UnitLogic.Parts.UnitPartSpellResistance/SpellImmunity", "SpellDescriptor",
+            "SpellImmunity.SpellDescriptor");
+
+        Console.WriteLine();
         Console.WriteLine("=== 嵌套枚举 StatGetter.ValueType ===");
         var sg = game.Find("Kingmaker.EntitySystem.Properties.Getters.StatGetter", false);
         var nested = sg?.NestedTypes.FirstOrDefault(t => t.Name == "ValueType");

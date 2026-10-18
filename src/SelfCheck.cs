@@ -48,6 +48,17 @@ namespace WizardArchetype
             Check(typeof(Kingmaker.UnitLogic.Abilities.AbilityData),
                   "get_CanBeCastByCaster", "补丁I 低体质禁施法");
 
+            // 补丁 J：突破描述符类魔法免疫（private 方法，有重载，按参数精确取）
+            CheckOverload(
+                typeof(Kingmaker.UnitLogic.Parts.UnitPartSpellResistance),
+                "CanApply",
+                new[]
+                {
+                    typeof(Kingmaker.UnitLogic.Parts.UnitPartSpellResistance.SpellImmunity),
+                    typeof(Kingmaker.UnitLogic.Mechanics.MechanicsContext),
+                },
+                "补丁J 免疫突破");
+
             // 路线 C：反射层字段校验（缺失会记 Error，避免数值静默算错）
             ReflectionFields.RunSelfCheck();
         }
