@@ -301,6 +301,13 @@ namespace WizardArchetype
                 name = "$AbilityXSrBypass$AbilityX_2",
             };
 
+            // 加骰面（D8）：同样必须挂在特性上 —— 伤害结算在 RuleCastSpell.Did 之后的帧里，
+            // 那时强化状态 Buff 已被移除，挂 Buff 上的订阅收不到通知。
+            var diceBonus = new AbilityXDamageDice
+            {
+                name = "$AbilityXDamageDice$AbilityX_3",
+            };
+
             var feature = new BlueprintFeature
             {
                 name = "WizardArchetype_AbilityXFeature",
@@ -308,7 +315,7 @@ namespace WizardArchetype
                 Ranks = 1,
                 IsClassFeature = true,
                 HideInUI = false,
-                ComponentsArray = new BlueprintComponent[] { addFacts, addResource, srBypass },
+                ComponentsArray = new BlueprintComponent[] { addFacts, addResource, srBypass, diceBonus },
             };
             SetNameAndDesc(feature, "WizardArchetype." + KeyBase + ".Name",
                 "WizardArchetype." + KeyBase + ".Desc");

@@ -198,42 +198,54 @@ namespace WizardArchetype
 
             evt.Context.ForceIgnoreSpellResist = true;
 
-            // 记录「这个施法上下文是我们绕过的」，供日志抑制补丁精确识别。
-            // 用弱引用表：AbilityExecutionContext 是短命对象，不能强引用（会漏内存）。
+            // 记录「这个施法上下文被我们强化了」。
+            // 后续的 SR 静默通过、伤害加骰面都靠这条标记识别自己该不该生效。
+            //
+            // 用弱引用表：AbilityExecutionContext 是短命对象，强引用会漏内存。
             // net48 的 ConditionalWeakTable 没有 AddOrUpdate，用 GetValue(工厂) 即可。
-            s_SrBypassed.GetValue(evt.Context, _ => SrBypassMarker);
+            s_Empowered.GetValue(evt.Context, _ => new EmpowerInfo
+            {
+                CasterLevel = evt.Spell.Spellbook != null ? evt.Spell.Spellbook.CasterLevel : 0,
+                SpellName = evt.Spell.Blueprint != null ? evt.Spell.Blueprint.name : null,
+            });
 
             Main.Log?.Log($"[能力X] 无视 SR 已置位：{evt.Spell.Blueprint?.name}");
         }
 
         // ------------------------------------------------------------------
-        // 供补丁使用：判断某个 SR 检定是不是「本 MOD 绕过」的
+        // 强化标记：SR 静默通过 + 伤害加骰面 共用
         // ------------------------------------------------------------------
 
-        private static readonly object SrBypassMarker = new object();
+        /// <summary>一次被强化的施法所携带的信息。</summary>
+        internal sealed class EmpowerInfo
+        {
+            /// <summary>该法术书的 CL（决定加骰面档位）。</summary>
+            public int CasterLevel;
+            public string SpellName;
+        }
 
         private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<
-            Kingmaker.UnitLogic.Abilities.AbilityExecutionContext, object> s_SrBypassed =
+            Kingmaker.UnitLogic.Abilities.AbilityExecutionContext, EmpowerInfo> s_Empowered =
             new System.Runtime.CompilerServices.ConditionalWeakTable<
-                Kingmaker.UnitLogic.Abilities.AbilityExecutionContext, object>();
+                Kingmaker.UnitLogic.Abilities.AbilityExecutionContext, EmpowerInfo>();
 
-        /// <summary>
-        /// 该 SR 检定是否由本 MOD 的强化施法触发（即 ForceIgnoreSpellResist 是**我们**设的）。
-        ///
-        /// 为什么不能只看 ForceIgnoreSpellResist 是否为 true：
-        ///   宗师之杖等原版来源也会置位。若按标志判断，会把原版内容一并改掉 ——
-        ///   违反「不全局改、不暗改」原则。这里只看我们亲手标记过的上下文。
-        /// </summary>
+        /// <summary>取强化信息；不是我们强化的返回 null。</summary>
+        internal static EmpowerInfo GetEmpowerInfo(Kingmaker.UnitLogic.Mechanics.MechanicsContext ctx)
+        {
+            if (ctx == null) return null;
+
+            var abilityCtx = ctx as Kingmaker.UnitLogic.Abilities.AbilityExecutionContext
+                             ?? ctx.SourceAbilityContext;
+            if (abilityCtx == null) return null;
+
+            EmpowerInfo info;
+            return s_Empowered.TryGetValue(abilityCtx, out info) ? info : null;
+        }
+
+        /// <summary>该 SR 检定是否由本 MOD 的强化施法触发。</summary>
         internal static bool IsSrBypassedByUs(Kingmaker.RuleSystem.Rules.RuleSpellResistanceCheck rule)
         {
-            if (rule == null) return false;
-
-            var ctx = rule.Context as Kingmaker.UnitLogic.Abilities.AbilityExecutionContext
-                      ?? rule.Context?.SourceAbilityContext;
-            if (ctx == null) return false;
-
-            object dummy;
-            return s_SrBypassed.TryGetValue(ctx, out dummy);
+            return rule != null && GetEmpowerInfo(rule.Context) != null;
         }
 
         public void OnEventAboutToTrigger(RuleCastSpell evt)

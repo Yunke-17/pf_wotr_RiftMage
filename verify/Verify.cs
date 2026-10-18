@@ -128,6 +128,29 @@ class Verify
         CheckType(game, "Kingmaker.UnitLogic.UnitFactComponentDelegate", "UnitFactComponentDelegate");
 
         Console.WriteLine();
+        Console.WriteLine("=== 能力X 第3步：加骰面 ===");
+        CheckType(game, "Kingmaker.RuleSystem.Rules.Damage.RuleCalculateDamage", "RuleCalculateDamage");
+        CheckProperty(game, "Kingmaker.RuleSystem.Rules.Damage.RuleCalculateDamage", "DamageBundle",
+            "RuleCalculateDamage.DamageBundle");
+        // 骰式修改的载体
+        CheckType(game, "Kingmaker.RuleSystem.Rules.ModifiableDiceFormula", "ModifiableDiceFormula");
+        CheckProperty(game, "Kingmaker.RuleSystem.Rules.ModifiableDiceFormula", "ModifiedValue",
+            "ModifiableDiceFormula.ModifiedValue");
+        CheckProperty(game, "Kingmaker.RuleSystem.Rules.ModifiableDiceFormula", "Modifications",
+            "ModifiableDiceFormula.Modifications");
+        CheckMethodWithParams(game, "Kingmaker.RuleSystem.Rules.ModifiableDiceFormula", "Modify",
+            new[] { "Kingmaker.RuleSystem.DiceFormula", "Kingmaker.EntitySystem.EntityFact" },
+            "ModifiableDiceFormula.Modify(DiceFormula, EntityFact)");
+        // BaseDamage.Dice
+        CheckProperty(game, "Kingmaker.RuleSystem.Rules.Damage.BaseDamage", "Dice", "BaseDamage.Dice");
+        // DiceFormula 结构
+        CheckType(game, "Kingmaker.RuleSystem.DiceFormula", "DiceFormula");
+        CheckProperty(game, "Kingmaker.RuleSystem.DiceFormula", "Rolls", "DiceFormula.Rolls");
+        CheckProperty(game, "Kingmaker.RuleSystem.DiceFormula", "Dice", "DiceFormula.Dice");
+        // DiceFormulaModifier.Source（幂等保护依赖它）
+        CheckProperty(game, "Kingmaker.RuleSystem.Rules.DiceFormulaModifier", "Source", "DiceFormulaModifier.Source");
+
+        Console.WriteLine();
         Console.WriteLine("=== 嵌套枚举 StatGetter.ValueType ===");
         var sg = game.Find("Kingmaker.EntitySystem.Properties.Getters.StatGetter", false);
         var nested = sg?.NestedTypes.FirstOrDefault(t => t.Name == "ValueType");
