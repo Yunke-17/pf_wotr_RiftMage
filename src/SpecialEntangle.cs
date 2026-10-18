@@ -145,11 +145,13 @@ namespace WizardArchetype
             if (!AbilityXHelper.IsEligible(evt.Spell)) return;
 
             int level = GetWizardLevel(Owner);
-            int dc = GetConcentrationDC(level);
+            int spellLevel = evt.Spell.SpellLevel;
+            int dc = GetConcentrationDC(level, spellLevel);
 
             evt.CustomDC = dc;
 
-            Main.Log?.Log($"[特殊纠缠] 强制专注：{evt.Spell.Blueprint?.name}，法师等级 {level}，DC {dc}");
+            Main.Log?.Log($"[特殊纠缠] 强制专注：{evt.Spell.Blueprint?.name}，" +
+                          $"法师等级 {level}，环位 {spellLevel}，DC {dc}");
         }
 
         public void OnEventDidTrigger(RuleCheckConcentration evt)
@@ -244,13 +246,39 @@ namespace WizardArchetype
         }
 
         /// <summary>
-        /// DC(L) = min(32, 25 + round(3(L-1)/7))，L 为法师等级（§6.3）。
+        /// 专属专注 DC（2026-10-18 改版，用户选定方案 A）。
+        ///
+        ///     DC = 10 + ceil(CL / 2) + 环位 × 2
+        ///
+        /// CL = 法师职业等级；环位 = 实际施放环位（含超魔提升，即 AbilityData.SpellLevel）。
+        ///
+        /// ========== 为什么换掉旧公式 ==========
+        ///
+        /// 旧公式 min(32, 25 + round(3(L-1)/7)) 的问题是「前弱后强」：
+        ///   专注值 = CL + 施法属性调整值 + 专注加值（RuleCalculateAbilityParams.cs:202-208），
+        ///   而旧 DC 封顶 32，专注值却能涨到 37+。
+        ///   实测通过率：CL 1 只有 15%，CL 15 以后 100%（极差 85 个百分点）。
+        ///
+        /// 新公式的通过率区间 75%~100%（极差 25 个百分点）：
+        ///   CL 1 → DC 13（75%）    CL 10 → DC 25（95%）
+        ///   CL 15 → DC 34（85%）   CL 20 → DC 38（100%）
+        /// 中段略松、高环位略紧，符合「压力平滑」的设计目标。
+        ///
+        /// 对比数据见 WotrModDev/StaticCheck/concentration_curves.py。
         /// </summary>
-        internal static int GetConcentrationDC(int wizardLevel)
+        internal static int GetConcentrationDC(int wizardLevel, int spellLevel)
         {
             if (wizardLevel < 1) wizardLevel = 1;
-            int dc = 25 + (int)Math.Round(3.0 * (wizardLevel - 1) / 7.0, MidpointRounding.AwayFromZero);
-            return Math.Min(32, dc);
+            if (spellLevel < 0) spellLevel = 0;
+
+            int half = (wizardLevel + 1) / 2;   // ceil(CL / 2)
+            return 10 + half + spellLevel * 2;
+        }
+
+        /// <summary>兼容旧调用：只给等级时按 1 环估算（仅供日志/兜底使用）。</summary>
+        internal static int GetConcentrationDC(int wizardLevel)
+        {
+            return GetConcentrationDC(wizardLevel, 1);
         }
 
         private static int GetWizardLevel(Kingmaker.EntitySystem.Entities.UnitEntityData unit)

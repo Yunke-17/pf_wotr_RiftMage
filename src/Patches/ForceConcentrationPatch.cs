@@ -60,7 +60,8 @@ namespace WizardArchetype.Patches
                 if (!AbilityXHelper.IsEligible(ability)) return true;
 
                 int level = GetWizardLevel(unit);
-                int dc = SpecialEntangleConcentration.GetConcentrationDC(level);
+                int spellLevel = ability.SpellLevel;
+                int dc = SpecialEntangleConcentration.GetConcentrationDC(level, spellLevel);
 
                 var rule = new RuleCheckConcentration(unit, ability)
                 {
@@ -73,7 +74,7 @@ namespace WizardArchetype.Patches
                 bool success = game.Rulebook.TriggerEvent<RuleCheckConcentration>(rule).Success;
 
                 Main.Log?.Log($"[特殊纠缠] 专属专注检定：{ability.Blueprint?.name}，" +
-                              $"法师等级 {level}，DC {dc}，结果 {(success ? "通过" : "失败")}");
+                              $"法师等级 {level}，环位 {spellLevel}，DC {dc}，结果 {(success ? "通过" : "失败")}");
 
                 AbilityXScope.AcceptanceHook("X.EntangleCheckRan", true);
                 AbilityXScope.AcceptanceHook("X.EntangleCheckDC", dc);
