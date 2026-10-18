@@ -59,6 +59,13 @@ namespace WizardArchetype
                 },
                 "补丁J 免疫突破");
 
+            // 补丁 J2：Buff 描述符免疫（另一条独立路径）
+            CheckOverload(
+                typeof(Kingmaker.UnitLogic.FactLogic.BuffDescriptorImmunity),
+                "IsImmune",
+                new[] { typeof(Kingmaker.UnitLogic.Mechanics.MechanicsContext) },
+                "补丁J2 Buff描述符免疫");
+
             // 路线 C：反射层字段校验（缺失会记 Error，避免数值静默算错）
             ReflectionFields.RunSelfCheck();
         }
