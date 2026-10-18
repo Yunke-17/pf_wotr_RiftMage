@@ -290,6 +290,17 @@ namespace WizardArchetype
             ReflectionFields.Set(addResource, "m_Resource",
                 BlueprintReference<BlueprintAbilityResource>.CreateTyped<BlueprintAbilityResourceReference>(Resource));
 
+            // ★ 无视 SR 的订阅者必须挂在**特性**上，不能挂在强化状态 Buff 上。
+            //
+            // 原因：SR 检定发生在 RuleCastSpell.Did 之后的帧里（AbilityExecutionProcess 协程），
+            // 而强化状态在 Did 里就被移除了 —— 订阅随 Buff 一起失效，
+            // 等 SR 检定来临时收不到通知，IgnoreSpellResistance 就设不上。
+            // 特性是常驻的，能覆盖整个时间窗。
+            var srBypass = new AbilityXSrBypass
+            {
+                name = "$AbilityXSrBypass$AbilityX_2",
+            };
+
             var feature = new BlueprintFeature
             {
                 name = "WizardArchetype_AbilityXFeature",
@@ -297,7 +308,7 @@ namespace WizardArchetype
                 Ranks = 1,
                 IsClassFeature = true,
                 HideInUI = false,
-                ComponentsArray = new BlueprintComponent[] { addFacts, addResource },
+                ComponentsArray = new BlueprintComponent[] { addFacts, addResource, srBypass },
             };
             SetNameAndDesc(feature, "WizardArchetype." + KeyBase + ".Name",
                 "WizardArchetype." + KeyBase + ".Desc");

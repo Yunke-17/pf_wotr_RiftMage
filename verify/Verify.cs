@@ -117,6 +117,17 @@ class Verify
             "RuleSpellResistanceCheck.HasResistanceRoll");
 
         Console.WriteLine();
+        Console.WriteLine("=== 能力X 第2步补2：引擎静默通过钩子 ===");
+        // RuleSpellResistanceCheck.IgnoreSpellResistance：OnTrigger 开头检查，置 true 则整段跳过
+        // （不计算 SpellResistance、不掷骰 ⇒ HasResistanceRoll=false ⇒ 日志线程提前返回）
+        CheckProperty(game, "Kingmaker.RuleSystem.Rules.RuleSpellResistanceCheck", "IgnoreSpellResistance",
+            "RuleSpellResistanceCheck.IgnoreSpellResistance");
+        CheckProperty(game, "Kingmaker.RuleSystem.Rules.RuleSpellResistanceCheck", "TargetIsImmune",
+            "RuleSpellResistanceCheck.TargetIsImmune");
+        // 常驻订阅者用的基类（特性级组件）
+        CheckType(game, "Kingmaker.UnitLogic.UnitFactComponentDelegate", "UnitFactComponentDelegate");
+
+        Console.WriteLine();
         Console.WriteLine("=== 嵌套枚举 StatGetter.ValueType ===");
         var sg = game.Find("Kingmaker.EntitySystem.Properties.Getters.StatGetter", false);
         var nested = sg?.NestedTypes.FirstOrDefault(t => t.Name == "ValueType");

@@ -58,12 +58,18 @@ namespace WizardArchetype.Patches
             {
                 if (!AbilityXScope.IsSrBypassedByUs(rule)) return true;
 
+                // ★ 目标对「这个法术本身」免疫时不要抑制。
+                //   IgnoreSpellResistance 只跳过 SR 计算，但 TargetIsImmune 照常判定；
+                //   那种情况下原版会打「免疫」提示，是有用信息，必须保留。
+                //   （加了 IgnoreSpellResistance 之后，正常 SR 目标本就不会产生日志，
+                //     这个补丁只是兜底，防止某些路径仍掷骰。）
+                if (rule.TargetIsImmune) return true;
+
                 if (Main.DebugLog)
                 {
-                    Main.Log?.Log($"[能力X] 已抑制 SR 战斗日志：{rule?.Ability?.name}（自动通过，不显示检定）");
+                    Main.Log?.Log($"[能力X] 兜底：已抑制 SR 战斗日志 {rule?.Ability?.name}");
                 }
 
-                // 验收埋点：证明「确实走到了抑制逻辑」
                 AbilityXScope.AcceptanceHook("X.SRLogSuppressed", true);
 
                 return false;   // 跳过原方法，不产生日志条目
