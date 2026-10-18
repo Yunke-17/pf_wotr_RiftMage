@@ -187,6 +187,23 @@ class Verify
         CheckEnumMember(game, "Kingmaker.UnitLogic.UnitCondition", "Staggered");
 
         Console.WriteLine();
+        Console.WriteLine("=== 阶段4：战斗开场二选一 + 特殊纠缠 ===");
+        CheckType(game, "Kingmaker.PubSubSystem.IUnitCombatHandler", "IUnitCombatHandler");
+        CheckMethodWithParams(game, "Kingmaker.PubSubSystem.IUnitCombatHandler", "HandleUnitJoinCombat",
+            new[] { "Kingmaker.EntitySystem.Entities.UnitEntityData" }, "IUnitCombatHandler.HandleUnitJoinCombat");
+        // 最终先攻值
+        CheckProperty(game, "Kingmaker.Controllers.Combat.UnitCombatState", "Initiative", "UnitCombatState.Initiative");
+        // 强制专注：CustomDC 可写，OnTrigger 读取
+        CheckProperty(game, "Kingmaker.RuleSystem.Rules.Abilities.RuleCheckConcentration", "CustomDC",
+            "RuleCheckConcentration.CustomDC");
+        CheckProperty(game, "Kingmaker.RuleSystem.Rules.Abilities.RuleCheckConcentration", "Success",
+            "RuleCheckConcentration.Success");
+        // 移除 Buff
+        CheckMethodWithParams(game, "Kingmaker.Designers.GameHelper", "RemoveBuff",
+            new[] { "Kingmaker.EntitySystem.Entities.UnitEntityData", "Kingmaker.UnitLogic.Buffs.Blueprints.BlueprintBuff" },
+            "GameHelper.RemoveBuff(UnitEntityData, BlueprintBuff)");
+
+        Console.WriteLine();
         Console.WriteLine("=== 嵌套枚举 StatGetter.ValueType ===");
         var sg = game.Find("Kingmaker.EntitySystem.Properties.Getters.StatGetter", false);
         var nested = sg?.NestedTypes.FirstOrDefault(t => t.Name == "ValueType");

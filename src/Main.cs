@@ -55,6 +55,9 @@ namespace WizardArchetype
 
                 SelfCheck.Run();
 
+                // 开场状态需要「延迟判定」（等先攻全部结算完），用 UMM 的每帧回调驱动。
+                modEntry.OnUpdate = OnUpdate;
+
                 Enabled = true;
                 Log.Log("WizardArchetype loaded.");
                 return true;
@@ -63,6 +66,20 @@ namespace WizardArchetype
             {
                 Log.Error("Failed to load: " + e);
                 return false;
+            }
+        }
+
+        private static void OnUpdate(UnityModManager.ModEntry modEntry, float dt)
+        {
+            if (!Enabled) return;
+
+            try
+            {
+                OpeningStateDecider.Tick();
+            }
+            catch (Exception e)
+            {
+                Log?.Warning("OnUpdate 异常：" + e.Message);
             }
         }
 

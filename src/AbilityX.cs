@@ -53,6 +53,8 @@ namespace WizardArchetype
 
             // 特殊恍惚蓝图（能力X 代价用，也供阶段4的战斗开场状态复用）
             SpecialStatuses.Create(cache);
+            // 特殊纠缠蓝图（战斗开场状态用）
+            SpecialEntangleBlueprints.Create(cache);
 
             // 1) 资源（每次休息 1 次）
             Resource = CreateResource(cache);
@@ -317,6 +319,12 @@ namespace WizardArchetype
                 name = "$AbilityXSavingThrow$AbilityX_4",
             };
 
+            // 战斗开场「按先攻二选一」—— 挂在特性上（常驻），监听加入战斗事件。
+            var openingState = new SpecialOpeningState
+            {
+                name = "$SpecialOpeningState$AbilityX_5",
+            };
+
             var feature = new BlueprintFeature
             {
                 name = "WizardArchetype_AbilityXFeature",
@@ -326,7 +334,7 @@ namespace WizardArchetype
                 HideInUI = false,
                 ComponentsArray = new BlueprintComponent[]
                 {
-                    addFacts, addResource, srBypass, diceBonus, savingThrow,
+                    addFacts, addResource, srBypass, diceBonus, savingThrow, openingState,
                 },
             };
             SetNameAndDesc(feature, "WizardArchetype." + KeyBase + ".Name",
