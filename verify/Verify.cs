@@ -59,6 +59,29 @@ class Verify
         CheckField(game, "Kingmaker.UnitLogic.Buffs.Blueprints.BlueprintBuff", "FxOnRemove");
 
         Console.WriteLine();
+        Console.WriteLine("=== 能力X 第1步：作用域组件依赖 ===");
+        // RuleCalculateAbilityParams：arm 阶段要读 AbilityData / Spell
+        CheckType(game, "Kingmaker.RuleSystem.Rules.Abilities.RuleCalculateAbilityParams", "RuleCalculateAbilityParams");
+        CheckProperty(game, "Kingmaker.RuleSystem.Rules.Abilities.RuleCalculateAbilityParams", "AbilityData", "RCP.AbilityData");
+        CheckProperty(game, "Kingmaker.RuleSystem.Rules.Abilities.RuleCalculateAbilityParams", "Spell", "RCP.Spell");
+        // RuleCastSpell：consume 阶段要读 Spell / Success / IsUMDFailed
+        CheckType(game, "Kingmaker.RuleSystem.Rules.Abilities.RuleCastSpell", "RuleCastSpell");
+        CheckProperty(game, "Kingmaker.RuleSystem.Rules.Abilities.RuleCastSpell", "Spell", "RCS.Spell");
+        CheckProperty(game, "Kingmaker.RuleSystem.Rules.Abilities.RuleCastSpell", "Success", "RCS.Success");
+        CheckProperty(game, "Kingmaker.RuleSystem.Rules.Abilities.RuleCastSpell", "IsUMDFailed", "RCS.IsUMDFailed");
+        // 组件基类：UnitBuffComponentDelegate<TData>
+        CheckType(game, "Kingmaker.UnitLogic.Buffs.Components.UnitBuffComponentDelegate`1", "UnitBuffComponentDelegate<T>");
+        // Data 序列化载体：m_Data 在 **嵌套类 ComponentRuntime** 上（不是外层类），
+        // 且标了 [JsonProperty]（EntityFactComponentDelegate.cs:570）—— 这决定 Data 会被存档序列化，
+        // 也是「记住的法术」必须 [JsonIgnore] 的原因。
+        CheckField(game, "Kingmaker.EntitySystem.EntityFactComponentDelegate`2/ComponentRuntime", "m_Data");
+        // AbilityData 内容相等性
+        CheckMethod(game, "Kingmaker.UnitLogic.Abilities.AbilityData", "Equals", "AbilityData.Equals");
+        CheckMethod(game, "Kingmaker.UnitLogic.Abilities.AbilityData", "GetHashCode", "AbilityData.GetHashCode");
+        // 日志与后续档位都用
+        CheckProperty(game, "Kingmaker.UnitLogic.Spellbook", "CasterLevel", "Spellbook.CasterLevel");
+
+        Console.WriteLine();
         Console.WriteLine("=== 嵌套枚举 StatGetter.ValueType ===");
         var sg = game.Find("Kingmaker.EntitySystem.Properties.Getters.StatGetter", false);
         var nested = sg?.NestedTypes.FirstOrDefault(t => t.Name == "ValueType");
@@ -121,7 +144,11 @@ class Verify
         var t = mod.Find(typeName, false);
         if (t == null) { Console.WriteLine($"  [缺失] {label}: 类型不存在"); missing++; return; }
 
-        // 逐级向上查基类
+        // 逐级向上查基类。
+        // 注意：dnlib 里 Property 和 Field 是分开的元数据表。
+        // 游戏里很多「看起来像属性」的成员其实是 public 字段
+        // （例如 RuleCalculateAbilityParams.AbilityData、RuleCastSpell.Spell），
+        // 所以两处都要查，否则会误报缺失。
         var cur = t;
         while (cur != null)
         {
@@ -132,6 +159,15 @@ class Verify
                 Console.WriteLine($"  [OK] {owner}.{propName}  ({p.PropertySig.RetType.TypeName})");
                 return;
             }
+
+            var f = cur.Fields.FirstOrDefault(x => x.Name == propName);
+            if (f != null)
+            {
+                string owner = cur == t ? t.Name.String : $"{t.Name.String}(继承自 {cur.Name.String})";
+                Console.WriteLine($"  [OK] {owner}.{propName}  ({f.FieldType.TypeName})  [字段]");
+                return;
+            }
+
             cur = cur.BaseType?.ResolveTypeDef();
         }
 

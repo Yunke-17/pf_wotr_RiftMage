@@ -149,10 +149,14 @@ namespace WizardArchetype
             //
             // 曾用过原版 AddAbilityUseTrigger + ContextActionRemoveSelf，但它的
             // CheckAbilityType 只能判断「是不是法术」，无法表达 Q1 要求的
-            // 「法术书归属职业 == 法师」，会误吃戏法与术士/牧师法术，故改用自建组件。
-            var consume = new AbilityXConsumeOnCast
+            // 「法术书归属职业 == 法师」，会误吃戏法与术士/牧师法术。
+            //
+            // 第 1 步（作用域）：AbilityXScope 同时负责 arm（瞄准哪一发）与 consume（成功后移除）。
+            //   造抄原版 MetamagicOnNextSpell 的两阶段骨架，但改成 Did + Success 守卫。
+            //   后续效果组件（加骰面 / 豁免取低 / 无视 SR / 代价恍惚）将读它的 Data.Spell。
+            var scope = new AbilityXScope
             {
-                name = "$AbilityXConsumeOnCast$AbilityX_0",
+                name = "$AbilityXScope$AbilityX_0",
             };
 
             // 临时诊断探针（第 0 步专用，验证通过后删除）
@@ -161,7 +165,7 @@ namespace WizardArchetype
                 name = "$AbilityXDebugProbe$AbilityX_2",
             };
 
-            buff.ComponentsArray = new BlueprintComponent[] { consume, probe };
+            buff.ComponentsArray = new BlueprintComponent[] { scope, probe };
 
             // 组件 name 必须唯一非空（05 踩坑 #1），赋值后必须回填 OwnerBlueprint（05 踩坑 #2）
             foreach (var c in buff.ComponentsArray)
