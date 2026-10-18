@@ -197,7 +197,43 @@ namespace WizardArchetype
             if (evt.Context.ForceIgnoreSpellResist) return;
 
             evt.Context.ForceIgnoreSpellResist = true;
+
+            // 记录「这个施法上下文是我们绕过的」，供日志抑制补丁精确识别。
+            // 用弱引用表：AbilityExecutionContext 是短命对象，不能强引用（会漏内存）。
+            // net48 的 ConditionalWeakTable 没有 AddOrUpdate，用 GetValue(工厂) 即可。
+            s_SrBypassed.GetValue(evt.Context, _ => SrBypassMarker);
+
             Main.Log?.Log($"[能力X] 无视 SR 已置位：{evt.Spell.Blueprint?.name}");
+        }
+
+        // ------------------------------------------------------------------
+        // 供补丁使用：判断某个 SR 检定是不是「本 MOD 绕过」的
+        // ------------------------------------------------------------------
+
+        private static readonly object SrBypassMarker = new object();
+
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<
+            Kingmaker.UnitLogic.Abilities.AbilityExecutionContext, object> s_SrBypassed =
+            new System.Runtime.CompilerServices.ConditionalWeakTable<
+                Kingmaker.UnitLogic.Abilities.AbilityExecutionContext, object>();
+
+        /// <summary>
+        /// 该 SR 检定是否由本 MOD 的强化施法触发（即 ForceIgnoreSpellResist 是**我们**设的）。
+        ///
+        /// 为什么不能只看 ForceIgnoreSpellResist 是否为 true：
+        ///   宗师之杖等原版来源也会置位。若按标志判断，会把原版内容一并改掉 ——
+        ///   违反「不全局改、不暗改」原则。这里只看我们亲手标记过的上下文。
+        /// </summary>
+        internal static bool IsSrBypassedByUs(Kingmaker.RuleSystem.Rules.RuleSpellResistanceCheck rule)
+        {
+            if (rule == null) return false;
+
+            var ctx = rule.Context as Kingmaker.UnitLogic.Abilities.AbilityExecutionContext
+                      ?? rule.Context?.SourceAbilityContext;
+            if (ctx == null) return false;
+
+            object dummy;
+            return s_SrBypassed.TryGetValue(ctx, out dummy);
         }
 
         public void OnEventAboutToTrigger(RuleCastSpell evt)

@@ -99,6 +99,24 @@ class Verify
         CheckMethod(game, "Kingmaker.Controllers.AbilityExecutionProcess", "Tick", "AbilityExecutionProcess.Tick");
 
         Console.WriteLine();
+        Console.WriteLine("=== 能力X 第2步补：SR 战斗日志抑制（补丁F）===");
+        // 全程序集唯一的 SR 日志产生点（LogThreadService.cs:139 注册）
+        CheckType(game,
+            "Kingmaker.UI.Models.Log.CombatLog_ThreadSystem.LogThreads.Combat.RulebookSpellResistanceCheckLogThread",
+            "RulebookSpellResistanceCheckLogThread");
+        // HandleEvent 有两个重载，必须按签名取
+        CheckMethodWithParams(game,
+            "Kingmaker.UI.Models.Log.CombatLog_ThreadSystem.LogThreads.Combat.RulebookSpellResistanceCheckLogThread",
+            "HandleEvent",
+            new[] { "Kingmaker.RuleSystem.Rules.RuleSpellResistanceCheck" },
+            "SR日志 HandleEvent(RuleSpellResistanceCheck)");
+        // 抑制判断依赖 Context 链
+        CheckProperty(game, "Kingmaker.RuleSystem.Rules.RuleSpellResistanceCheck", "Context",
+            "RuleSpellResistanceCheck.Context");
+        CheckProperty(game, "Kingmaker.RuleSystem.Rules.RuleSpellResistanceCheck", "HasResistanceRoll",
+            "RuleSpellResistanceCheck.HasResistanceRoll");
+
+        Console.WriteLine();
         Console.WriteLine("=== 嵌套枚举 StatGetter.ValueType ===");
         var sg = game.Find("Kingmaker.EntitySystem.Properties.Getters.StatGetter", false);
         var nested = sg?.NestedTypes.FirstOrDefault(t => t.Name == "ValueType");
@@ -124,6 +142,46 @@ class Verify
         var ms = t.Methods.Where(m => m.Name == methodName).ToArray();
         if (ms.Length == 0) { Console.WriteLine($"  [缺失] {label}: 方法不存在"); missing++; return; }
         Console.WriteLine($"  [OK] {label}: {t.Name}.{methodName}()");
+    }
+
+    /// <summary>
+    /// 按参数类型精确校验重载。同名方法有多个时必须用它，否则会误判「存在」。
+    /// </summary>
+    static void CheckMethodWithParams(ModuleDefMD mod, string typeName, string methodName,
+        string[] paramTypes, string label)
+    {
+        var t = mod.Find(typeName, false);
+        if (t == null) { Console.WriteLine($"  [缺失] {label}: 类型不存在"); missing++; return; }
+
+        var ms = t.Methods.Where(m => m.Name == methodName).ToArray();
+        if (ms.Length == 0) { Console.WriteLine($"  [缺失] {label}: 方法不存在"); missing++; return; }
+
+        foreach (var m in ms)
+        {
+            // ★ dnlib 的 Parameters 对实例方法会把 this 计入第 0 个参数，
+            //   而反射签名里没有 this。这里跳过它，否则永远匹配不上。
+            int offset = m.IsStatic ? 0 : 1;
+            var ps = m.Parameters;
+            if (ps.Count - offset != paramTypes.Length) continue;
+
+            bool all = true;
+            for (int i = 0; i < paramTypes.Length; i++)
+            {
+                var actual = ps[i + offset].Type;
+                // TypeName 只有短名（RuleSpellResistanceCheck），FullName 才是全名；
+                // 调用方可能传任意一种，两边都允许。
+                if (actual.TypeName != paramTypes[i] && actual.FullName != paramTypes[i]) { all = false; break; }
+            }
+            if (!all) continue;
+
+            Console.WriteLine($"  [OK] {label}: {t.Name}.{methodName}({string.Join(", ", paramTypes.Select(p => p.Split('.').Last()))})  " +
+                              $"public={m.IsPublic}");
+            return;
+        }
+
+        Console.WriteLine($"  [缺失] {label}: 存在 {ms.Length} 个同名重载但签名不匹配（" +
+                          string.Join(" | ", ms.Select(m => m.Name + "(" + string.Join(", ", m.Parameters.Select(p => p.Type.TypeName)) + ")")) + "）");
+        missing++;
     }
 
     static void CheckField(ModuleDefMD mod, string typeName, string field)
