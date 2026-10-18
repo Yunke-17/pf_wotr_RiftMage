@@ -308,6 +308,12 @@ namespace WizardArchetype
                 name = "$AbilityXDamageDice$AbilityX_3",
             };
 
+            // 豁免多骰取低（D9）：同样挂在特性上，理由同上。
+            var savingThrow = new AbilityXSavingThrow
+            {
+                name = "$AbilityXSavingThrow$AbilityX_4",
+            };
+
             var feature = new BlueprintFeature
             {
                 name = "WizardArchetype_AbilityXFeature",
@@ -315,7 +321,10 @@ namespace WizardArchetype
                 Ranks = 1,
                 IsClassFeature = true,
                 HideInUI = false,
-                ComponentsArray = new BlueprintComponent[] { addFacts, addResource, srBypass, diceBonus },
+                ComponentsArray = new BlueprintComponent[]
+                {
+                    addFacts, addResource, srBypass, diceBonus, savingThrow,
+                },
             };
             SetNameAndDesc(feature, "WizardArchetype." + KeyBase + ".Name",
                 "WizardArchetype." + KeyBase + ".Desc");

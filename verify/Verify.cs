@@ -151,6 +151,21 @@ class Verify
         CheckProperty(game, "Kingmaker.RuleSystem.Rules.DiceFormulaModifier", "Source", "DiceFormulaModifier.Source");
 
         Console.WriteLine();
+        Console.WriteLine("=== 能力X 第4步：豁免多骰取低 ===");
+        CheckType(game, "IWasRoll", "IWasRoll（全局订阅接口）");
+        CheckMethodWithParams(game, "IWasRoll", "WasRoll",
+            new[] { "Kingmaker.RuleSystem.RulebookEvent", "Kingmaker.RuleSystem.Rules.RuleRollD20" },
+            "IWasRoll.WasRoll(RulebookEvent, RuleRollD20)");
+        CheckType(game, "Kingmaker.RuleSystem.Rules.RuleSavingThrow", "RuleSavingThrow");
+        // Reroll(fact, takeBest) 在父类 RuleRollDice 上（不是 RuleRollD20）
+        CheckMethodWithParams(game, "Kingmaker.RuleSystem.Rules.RuleRollDice", "Reroll",
+            new[] { "Kingmaker.EntitySystem.EntityFact", "System.Boolean" },
+            "RuleRollDice.Reroll(EntityFact, bool)");
+        CheckProperty(game, "Kingmaker.RuleSystem.Rules.RuleRollDice", "RollHistory", "RuleRollDice.RollHistory");
+        // 过滤用：RuleReason.Context
+        CheckProperty(game, "Kingmaker.RuleSystem.RuleReason", "Context", "RuleReason.Context");
+
+        Console.WriteLine();
         Console.WriteLine("=== 嵌套枚举 StatGetter.ValueType ===");
         var sg = game.Find("Kingmaker.EntitySystem.Properties.Getters.StatGetter", false);
         var nested = sg?.NestedTypes.FirstOrDefault(t => t.Name == "ValueType");

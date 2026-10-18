@@ -207,6 +207,7 @@ namespace WizardArchetype
             {
                 CasterLevel = evt.Spell.Spellbook != null ? evt.Spell.Spellbook.CasterLevel : 0,
                 SpellName = evt.Spell.Blueprint != null ? evt.Spell.Blueprint.name : null,
+                RoundIndex = CurrentRoundIndex(),
             });
 
             Main.Log?.Log($"[能力X] 无视 SR 已置位：{evt.Spell.Blueprint?.name}");
@@ -219,9 +220,15 @@ namespace WizardArchetype
         /// <summary>一次被强化的施法所携带的信息。</summary>
         internal sealed class EmpowerInfo
         {
-            /// <summary>该法术书的 CL（决定加骰面档位）。</summary>
+            /// <summary>该法术书的 CL（决定加骰面档位 / 豁免骰数档位）。</summary>
             public int CasterLevel;
             public string SpellName;
+
+            /// <summary>
+            /// 施法时所在的战斗轮次（GameTime / 6 秒）。-1 表示拿不到。
+            /// 用于实现 §8.5「后续回合独立触发的持续效果豁免不继承多骰取低」。
+            /// </summary>
+            public int RoundIndex = -1;
         }
 
         private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<
@@ -240,6 +247,21 @@ namespace WizardArchetype
 
             EmpowerInfo info;
             return s_Empowered.TryGetValue(abilityCtx, out info) ? info : null;
+        }
+
+        /// <summary>施法时所在的轮次（GameTime / 6 秒）。拿不到返回 -1。</summary>
+        private static int CurrentRoundIndex()
+        {
+            try
+            {
+                var game = Kingmaker.Game.Instance;
+                if (game == null || game.Player == null) return -1;
+                return (int)(game.Player.GameTime.TotalSeconds / 6.0);
+            }
+            catch (System.Exception)
+            {
+                return -1;
+            }
         }
 
         /// <summary>该 SR 检定是否由本 MOD 的强化施法触发。</summary>
