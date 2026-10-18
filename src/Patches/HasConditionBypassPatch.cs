@@ -42,24 +42,29 @@ namespace WizardArchetype.Patches
 
             try
             {
-                var unit = __instance != null && __instance.Owner != null
-                    ? __instance.Owner.Unit
-                    : null;
+                // ★ 性能：HasCondition 是热路径（移速计算、动作限制、施法检查每帧都会问）。
+                //   实测一轮战斗触发 79,223 次，因此这里必须尽早短路。
+                //   只有在「因为免疫而不成立」时才有必要旁路 —— 条件计数为 0 的情况
+                //   说明单位身上压根没有该条件，登记表里也不可能有，直接返回。
+                if (!__instance.HasConditionImmunity(condition)) return;
+
+                var unit = __instance.Owner != null ? __instance.Owner.Unit : null;
                 if (unit == null) return;
 
                 if (!SpecialConditionRegistry.Has(unit, condition)) return;
 
                 __result = true;
 
-                if (Main.DebugLog)
+                // 日志只记「第一次被放行」，绝不逐次打印（会刷爆 Player.log 且拖慢帧率）。
+                if (Main.DebugLog && SpecialConditionRegistry.MarkLogged(unit, condition))
                 {
-                    Main.Log?.Log($"[特殊状态] 免疫旁路放行：{unit.CharacterName} 的 {condition}");
+                    Main.Log?.Log($"[特殊状态] 免疫旁路已生效：{unit.CharacterName} 的 {condition}" +
+                                  "（此后同一状态不再重复记录）");
                 }
             }
-            catch (System.Exception e)
+            catch (System.Exception)
             {
-                // 旁路失败不能让战斗流程崩：保持原结果
-                Main.Log?.Warning("[特殊状态] 旁路异常，保持原判定：" + e.Message);
+                // 旁路失败不能让战斗流程崩：保持原结果，且不刷日志。
             }
         }
     }

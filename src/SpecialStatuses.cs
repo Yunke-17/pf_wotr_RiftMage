@@ -153,6 +153,10 @@ namespace WizardArchetype
         {
             public readonly System.Collections.Generic.HashSet<UnitCondition> Conditions =
                 new System.Collections.Generic.HashSet<UnitCondition>();
+
+            /// <summary>已打过「旁路生效」日志的条件（日志节流用）。</summary>
+            public readonly System.Collections.Generic.HashSet<UnitCondition> Logged =
+                new System.Collections.Generic.HashSet<UnitCondition>();
         }
 
         private static readonly ConditionalWeakTable<UnitEntityData, Entry> s_Entries =
@@ -176,6 +180,18 @@ namespace WizardArchetype
             if (unit == null) return false;
             Entry e;
             return s_Entries.TryGetValue(unit, out e) && e.Conditions.Contains(condition);
+        }
+
+        /// <summary>
+        /// 每个 (单位, 条件) 只返回一次 true，用于「只记第一次」的日志节流。
+        /// HasCondition 是热路径，实测一轮战斗触发数万次，不能每次都打日志。
+        /// </summary>
+        internal static bool MarkLogged(UnitEntityData unit, UnitCondition condition)
+        {
+            if (unit == null) return false;
+            Entry e;
+            if (!s_Entries.TryGetValue(unit, out e)) return false;
+            return e.Logged.Add(condition);
         }
     }
 }
