@@ -88,17 +88,31 @@ namespace WizardArchetype
     }
 
     /// <summary>
-    /// 开场状态的延迟判定器。由 Main.OnUpdate 每帧驱动。
+    /// 开场状态的判定器。由 Main.OnUpdate 每帧驱动。
+    ///
+    /// 判定时机（2026-10-18 调整）：
+    ///   最初用固定延迟 1.2 秒等先攻结算，实测体感太长（状态挂上后要等一秒才消失）。
+    ///   改为「就绪即判 + 短兜底」：
+    ///     - 每帧检查先攻是否都已掷出（我方 > 0 且每个战斗中的敌人 > 0）
+    ///     - 一旦就绪立刻判定（通常只要 1~2 帧，约 0.02~0.05 秒）
+    ///     - 超过 MaxWaitSeconds 仍未就绪（例如有敌人先攻恒为 0）则强制判定，避免永远不判定
+    ///
+    /// 为什么用「> 0」判就绪：先攻 = d20 + 调整值，最低也有 1；
+    /// 0 只可能是「尚未掷出」的初始值。
     /// </summary>
     internal static class OpeningStateDecider
     {
-        /// <summary>等待先攻结算的时间（秒）。1.2 秒足够覆盖普通战斗的先攻批处理。</summary>
-        private const float DelaySeconds = 1.2f;
+        /// <summary>最早允许判定的时间，给引擎留一两帧把状态挂完。</summary>
+        private const float EarliestSeconds = 0.05f;
+
+        /// <summary>兜底上限：超过这个时间还没就绪就强制判定。</summary>
+        private const float MaxWaitSeconds = 0.5f;
 
         private sealed class Pending
         {
             public UnitEntityData Unit;
-            public float DueTime;
+            public float Earliest;
+            public float Deadline;
         }
 
         private static readonly List<Pending> s_Pending = new List<Pending>();
@@ -107,10 +121,13 @@ namespace WizardArchetype
         {
             if (unit == null) return;
             s_Pending.RemoveAll(p => p.Unit == null || p.Unit == unit);
+
+            float now = UnityEngine.Time.realtimeSinceStartup;
             s_Pending.Add(new Pending
             {
                 Unit = unit,
-                DueTime = UnityEngine.Time.realtimeSinceStartup + DelaySeconds,
+                Earliest = now + EarliestSeconds,
+                Deadline = now + MaxWaitSeconds,
             });
         }
 
@@ -128,11 +145,52 @@ namespace WizardArchetype
             {
                 var p = s_Pending[i];
                 if (p.Unit == null) { s_Pending.RemoveAt(i); continue; }
-                if (now < p.DueTime) continue;
+                if (now < p.Earliest) continue;
+
+                bool ready = IsReady(p.Unit);
+                bool giveUp = now >= p.Deadline;
+                if (!ready && !giveUp) continue;
 
                 s_Pending.RemoveAt(i);
-                try { Decide(p.Unit); }
+                try
+                {
+                    Decide(p.Unit);
+                    if (!ready)
+                    {
+                        Main.Log?.Log("[开场状态] 先攻未全部就绪，已按当前值兜底判定");
+                    }
+                }
                 catch (Exception e) { Main.Log?.Warning("[开场状态] 判定失败：" + e.Message); }
+            }
+        }
+
+        /// <summary>我方与所有战斗中的敌人的先攻是否都已掷出。</summary>
+        private static bool IsReady(UnitEntityData unit)
+        {
+            try
+            {
+                if (unit.CombatState == null || unit.CombatState.Initiative <= 0) return false;
+
+                int enemyCount;
+                int enemyMax = GetEnemyMaxInitiative(unit, out enemyCount);
+                if (enemyCount == 0) return false;
+
+                // enemyMax > 0 说明至少有一个敌人已掷出；
+                // 但还要确认「每个」敌人都掷出了，避免用未掷出的 0 当最低值。
+                foreach (var other in Game.Instance.State.Units)
+                {
+                    if (other == null || other == unit) continue;
+                    if (!other.IsInCombat) continue;
+                    if (!unit.Group.IsEnemy(other.Group)) continue;
+
+                    if (other.CombatState == null || other.CombatState.Initiative <= 0) return false;
+                }
+
+                return enemyMax > 0;
+            }
+            catch (Exception)
+            {
+                return false;
             }
         }
 
