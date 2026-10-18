@@ -69,6 +69,8 @@ namespace WizardArchetype
 
             int changed = 0;
             string firstFormula = null;
+            int firstSidesBefore = 0;
+            int firstSidesAfter = 0;
 
             foreach (var damage in EnumerateDamage(evt))
             {
@@ -94,7 +96,11 @@ namespace WizardArchetype
                 dice.Modify(new DiceFormula(current.Rolls, (DiceType)next), Fact);
 
                 if (firstFormula == null)
+                {
                     firstFormula = current.Rolls + "d" + next;
+                    firstSidesBefore = sides;
+                    firstSidesAfter = next;
+                }
 
                 changed++;
             }
@@ -105,7 +111,14 @@ namespace WizardArchetype
                           $"{changed} 段伤害，首段 {firstFormula}");
 
             // 验收埋点
+            //
+            // ★ 为什么报 X.DiceUp 而不只报 X.DiceBonus：
+            //   档位（+2/+4/+6）依赖 CL，而 CL 会随升级变化。
+            //   断言里写死某个档位必然在换等级后误报 FAIL（实测踩过：
+            //   expect=2 但角色已 CL10 应为 6）。
+            //   X.DiceUp 表达的是「骰面确实变大了」，与等级无关，才是稳定的验收点。
             AbilityXScope.AcceptanceHook("X.DiceBonus", add);
+            AbilityXScope.AcceptanceHook("X.DiceUp", firstSidesAfter > firstSidesBefore);
             if (firstFormula != null)
                 AbilityXScope.AcceptanceHook("X.DiceFormula", firstFormula);
         }
