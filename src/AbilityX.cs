@@ -113,8 +113,7 @@ namespace WizardArchetype
 
         /// <summary>
         /// 强化施法状态，3 轮。
-        /// 本步【不挂任何组件】——只验证状态本身能不能挂上、到期。
-        /// 第 2 步起才逐个加效果组件。
+        /// 本步【不挂任何效果组件】——只验证状态本身能不能挂上、到期、手动移除。
         /// </summary>
         private static BlueprintBuff CreateBuff(BlueprintsCache cache)
         {
@@ -127,7 +126,78 @@ namespace WizardArchetype
                 Ranks = 0,
                 IsClassFeature = true,
                 ComponentsArray = new BlueprintComponent[0],
+
+                // ★ 必须给 FxOnRemove 一个非 null 实例，否则会在到期移除时崩溃。
+                //
+                // 依据（Kingmaker.UnitLogic.Buffs.Buff.OnRemove 的 IL，偏移 0x00B0）：
+                //   0x00AA  call    UnitFact.get_Blueprint()
+                //   0x00B0  ldfld   BlueprintBuff::FxOnRemove    ← 为 null
+                //   0x00B7  callvirt WeakResourceLink.Load(...)  ← 对 null 调用 → NullReferenceException
+                //
+                // 为什么原版大多数 Buff 的 FxOnRemove 也是 null 却没事：
+                // 只有当单位有 UnitEntityView 且带 ParticlesSnapMap 时（Buff.TrySpawnParticleEffect，
+                // Buff.cs:447），才会给 m_ParticleEffectOwner 赋值；一旦有值，移除时必然走到上面那句。
+                // 玩家棋子一定有 ParticlesSnapMap，所以玩家身上的 Buff 必须设 FxOnRemove。
+                //
+                // 这里刻意【不设 AssetId】：WeakResourceLink.Load 在 AssetId 为空时会直接
+                // return default（WeakResourceLink.2.cs:54-57），既不崩溃也【没有视觉特效】。
+                // 等效果组件齐全、需要正反馈时再换成一个真正的特效。
+                FxOnRemove = new Kingmaker.ResourceLinks.PrefabLink(),
             };
+
+            // ★ 施法后自动移除：照抄原版「法术大师·专注法术」的范式
+            //   （SpellMasterFocusedSpellsBuff.jbp）
+            //
+            //   AddAbilityUseTrigger {
+            //       AfterCast = true,                       ← 施法完成后触发（不是施法瞬间）
+            //       CheckAbilityType = true, Type = Spell,  ← 只对「法术」生效，戏法等不算
+            //       Action = ContextActionRemoveSelf        ← 移除自己
+            //   }
+            //
+            // 为什么不自己订阅 RuleCastSpell：
+            // 原版已有这个组件、已被大量职业使用（法术大师 / 博大吾师等），
+            // 且它内置了「施法者必须是自己」(OnAbilityEffectApplied 里的 maybeCaster != Owner 判断)
+            // 与「施法完成后才触发」两个我们恰好需要的约束。
+            //
+            // 注意：这一步的判定只到「是不是法术」。
+            // Q1 的「法术书归属职业 == 法师」要用第 1 步的自建组件补，
+            // 本步刻意不加，以保持「只验证生命周期」的纯净性。
+            var removeSelf = new Kingmaker.UnitLogic.Mechanics.Actions.ContextActionRemoveSelf
+            {
+                name = "$ContextActionRemoveSelf$AbilityX_0",
+            };
+            var removeTrigger = new AddAbilityUseTrigger
+            {
+                name = "$AddAbilityUseTrigger$AbilityX_1",
+                AfterCast = true,
+                ActionsOnAllTargets = false,
+                ActionsOnTarget = false,
+                FromSpellbook = false,
+                ForOneSpell = false,
+                ForMultipleSpells = false,
+                CheckAbilityType = true,
+                Type = AbilityType.Spell,
+                MinSpellLevel = false,
+                ExactSpellLevel = false,
+                CheckDescriptor = false,
+                CheckAoE = false,
+                CheckSpellSchool = false,
+                CheckRange = false,
+                CheckSourceItemType = false,
+                UseCastRule = false,
+                OnlyOnce = false,
+                OncePerContext = false,
+            };
+            removeTrigger.Action = new Kingmaker.ElementsSystem.ActionList();
+            removeTrigger.Action.Actions = new Kingmaker.ElementsSystem.GameAction[] { removeSelf };
+
+            buff.ComponentsArray = new BlueprintComponent[] { removeTrigger };
+
+            // 组件 name 必须唯一非空（05 踩坑 #1），赋值后必须回填 OwnerBlueprint（05 踩坑 #2）
+            foreach (var c in buff.ComponentsArray)
+            {
+                if (c != null) c.OwnerBlueprint = buff;
+            }
             SetNameAndDesc(buff, "WizardArchetype." + KeyBase + ".BuffName",
                 "WizardArchetype." + KeyBase + ".BuffDesc");
 
@@ -186,6 +256,18 @@ namespace WizardArchetype
                 BlueprintReference<BlueprintAbilityResource>.CreateTyped<BlueprintAbilityResourceReference>(Resource));
             ReflectionFields.Set(resourceLogic, "m_IsSpendResource", true);
 
+            // 状态已存在时禁用能力（原版「法术大师·专注法术」同款）
+            // 依据：AbilityCasterHasNoFacts.IsCasterRestrictionPassed 在施法者已拥有这些 Fact 时返回 false
+            var noFacts = new Kingmaker.UnitLogic.Abilities.Components.CasterCheckers.AbilityCasterHasNoFacts
+            {
+                name = "$AbilityCasterHasNoFacts$AbilityX_3",
+            };
+            ReflectionFields.Set(noFacts, "m_Facts",
+                new BlueprintUnitFactReference[]
+                {
+                    BlueprintReference<BlueprintUnitFact>.CreateTyped<BlueprintUnitFactReference>(Buff),
+                });
+
             var ability = new BlueprintAbility
             {
                 name = "WizardArchetype_AbilityX",
@@ -194,7 +276,7 @@ namespace WizardArchetype
                 Range = AbilityRange.Personal,
                 ActionType = UnitCommand.CommandType.Free,
                 SpellResistance = false,
-                ComponentsArray = new BlueprintComponent[] { runAction, resourceLogic },
+                ComponentsArray = new BlueprintComponent[] { runAction, resourceLogic, noFacts },
             };
             SetNameAndDesc(ability, "WizardArchetype." + KeyBase + ".Name",
                 "WizardArchetype." + KeyBase + ".Desc");
