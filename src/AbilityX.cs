@@ -55,6 +55,8 @@ namespace WizardArchetype
             SpecialStatuses.Create(cache);
             // 特殊纠缠蓝图（战斗开场状态用）
             SpecialEntangleBlueprints.Create(cache);
+            // 能力Y 蓝图（3 级特性）
+            AbilityYBlueprints.Create(cache);
 
             // 1) 资源（每次休息 1 次）
             Resource = CreateResource(cache);

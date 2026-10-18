@@ -66,6 +66,13 @@ namespace WizardArchetype
 
             OpeningStateDecider.Unregister(Owner);
 
+            // §9.2：能力 Y 的修正持续至战斗结束 ⇒ 离开战斗时归零
+            if (AbilityY.GetS(Owner) != 0)
+            {
+                Main.Log?.Log("[能力Y] 战斗结束，净层数归零");
+                AbilityY.SetS(Owner, 0);
+            }
+
             // 防御性清理：正常情况下状态由 CombatStateTrigger 自行清除，
             // 这里再兜一次，避免极端时序下残留（例如判定恰好发生在离开战斗的同一帧）。
             RemoveBuff(SpecialStatuses.SpecialStaggered);

@@ -214,6 +214,33 @@ class Verify
         CheckEnumMember(game, "Kingmaker.RuleSystem.DiceType", "D2");
 
         Console.WriteLine();
+        Console.WriteLine("=== 能力Y（§9）===");
+        CheckType(game, "Kingmaker.UnitLogic.Abilities.Components.AbilityVariants", "AbilityVariants");
+        CheckField(game, "Kingmaker.UnitLogic.Abilities.Components.AbilityVariants", "m_Variants");
+        // CL/DC 修正 API
+        CheckMethodWithParams(game, "Kingmaker.RuleSystem.Rules.Abilities.RuleCalculateAbilityParams",
+            "AddBonusCasterLevel",
+            new[] { "System.Int32", "Kingmaker.Enums.ModifierDescriptor" },
+            "AddBonusCasterLevel(int, ModifierDescriptor)");
+        CheckMethodWithParams(game, "Kingmaker.RuleSystem.Rules.Abilities.RuleCalculateAbilityParams",
+            "AddBonusDC",
+            new[] { "System.Int32", "Kingmaker.Enums.ModifierDescriptor" },
+            "AddBonusDC(int, ModifierDescriptor)");
+        // 资源退还
+        CheckMethodWithParams(game, "Kingmaker.UnitLogic.UnitAbilityResourceCollection", "Restore",
+            new[] { "Kingmaker.Blueprints.BlueprintScriptableObject", "System.Int32" },
+            "UnitAbilityResourceCollection.Restore(blueprint, amount)");
+        // 上下文动作基类
+        CheckType(game, "Kingmaker.UnitLogic.Mechanics.Actions.ContextAction", "ContextAction");
+
+        Console.WriteLine();
+        Console.WriteLine("=== C15：CON < 3 禁施法（补丁I）===");
+        CheckProperty(game, "Kingmaker.UnitLogic.Abilities.AbilityData", "CanBeCastByCaster",
+            "AbilityData.CanBeCastByCaster");
+        CheckProperty(game, "Kingmaker.UnitLogic.Abilities.AbilityData", "Caster", "AbilityData.Caster");
+        CheckEnumMember(game, "Kingmaker.UnitLogic.UnitCondition", "SpellcastingForbidden");
+
+        Console.WriteLine();
         Console.WriteLine("=== 嵌套枚举 StatGetter.ValueType ===");
         var sg = game.Find("Kingmaker.EntitySystem.Properties.Getters.StatGetter", false);
         var nested = sg?.NestedTypes.FirstOrDefault(t => t.Name == "ValueType");

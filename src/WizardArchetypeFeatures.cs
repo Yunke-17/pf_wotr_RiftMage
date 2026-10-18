@@ -74,6 +74,14 @@ namespace WizardArchetype
             result.Add((1, MakeConcentration(cache)));
             result.Add((3, MakeSpellPenetration(cache)));
 
+            // E1–E9：能力 Y「施法参数交换」—— 法师 3 级，迅捷动作
+            // 蓝图在 AbilityX.Create 里已构建（见 AbilityYBlueprints.Create）
+            var abilityY = AbilityYBlueprints.Feature;
+            if (abilityY != null)
+            {
+                result.Add((3, abilityY));
+            }
+
             // E18：法师 5 级自动获得「瞬发法术」原版专长
             AddOriginal(result, cache, 5, QuickenSpellFeat, "瞬发法术");
 

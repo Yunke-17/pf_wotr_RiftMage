@@ -44,6 +44,10 @@ namespace WizardArchetype
             Check(typeof(Kingmaker.UnitLogic.Commands.UnitUseAbility),
                   "MakeConcentrationCheckIfCastingIsDifficult", "补丁H 强制专注检定");
 
+            // 补丁 I：CON < 3 禁施法（private 属性的 getter）
+            Check(typeof(Kingmaker.UnitLogic.Abilities.AbilityData),
+                  "get_CanBeCastByCaster", "补丁I 低体质禁施法");
+
             // 路线 C：反射层字段校验（缺失会记 Error，避免数值静默算错）
             ReflectionFields.RunSelfCheck();
         }
