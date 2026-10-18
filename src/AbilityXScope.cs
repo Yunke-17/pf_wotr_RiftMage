@@ -83,34 +83,76 @@ namespace WizardArchetype
                 return;   // 不要在这里清空 —— 无关的 params 计算不应该打断已瞄准的目标
             }
 
-            if (AbilityXHelper.IsEligible(spell))
+            bool sameAsAimed = Data.Spell != null && Data.Spell.Equals(spell);
+            bool firstSight = !IsSameReported(spell);
+
+            string why;
+            bool eligible = AbilityXHelper.IsEligible(spell, out why);
+
+            if (Main.DebugLog && firstSight)
             {
-                Data.Spell = spell;
-                if (Main.DebugLog)
+                // 同一发法术在一次施法里会被 arm 几十次（实测一次 BurningHands 触发 24 次），
+                // 日志只打第一次，避免刷屏。
+                Main.Log?.Log($"[能力X] 判定 {spell.Blueprint?.name}：{(eligible ? "合格" : "不合格 — " + why)}" +
+                              $"（环 {spell.SpellLevel}，CL {spell.Spellbook?.CasterLevel}，" +
+                              $"书实例 {(spell.Spellbook != null ? (spell.Spellbook.Blueprint != null ? spell.Spellbook.Blueprint.name : "?") : "无")}，" +
+                              $"书蓝图 {(spell.SpellbookBlueprint != null ? spell.SpellbookBlueprint.name : "无")}）");
+            }
+
+            if (eligible)
+            {
+                if (sameAsAimed)
                 {
-                    Main.Log?.Log($"[能力X] 已瞄准：{spell.Blueprint?.name}（环 {spell.SpellLevel}，CL {spell.Spellbook?.CasterLevel}）");
+                    return;   // 同一发重复 arm，静默跳过
                 }
+
+                Data.Spell = spell;
+                Main.Log?.Log($"[能力X] 已瞄准：{spell.Blueprint?.name}（环 {spell.SpellLevel}，CL {spell.Spellbook?.CasterLevel}）");
 
                 // 验收埋点：窗口已瞄准一发合格法术
                 AcceptanceHook("X.Armed", true);
                 AcceptanceHook("X.CasterLevel", spell.Spellbook != null ? spell.Spellbook.CasterLevel : 0);
+                return;
             }
-            else
-            {
-                // 不合格的法术不会占用窗口，但也不清掉已有的瞄准目标：
-                // 玩家可能先放了几个戏法/术士法术，再放法师法术，强化应该留给后者。
-                if (Main.DebugLog)
-                {
-                    Main.Log?.Log($"[能力X] 不合格，忽略：{spell.Blueprint?.name}（环 {spell.SpellLevel}，书 {(spell.Spellbook != null ? "有" : "无")}）");
-                }
 
-                // 验收埋点：区别对待「戏法/非法师法术」与「不是法术」——
-                // 后者（物品触发、类法术能力）本来就不该进这条通道，报出来会污染断言。
-                if (IsTrickOrOtherSpell(spell))
-                {
-                    AcceptanceHook("X.Ineligible", true);
-                }
+            // 不合格：不占用窗口，也不清掉已有的瞄准目标
+            // （玩家可能先放几个戏法/术士法术，再放法师法术，强化应留给后者）。
+            // 验收埋点：只对「本该被拦下的法术」上报，避免物品/类法术能力污染断言。
+            if (firstSight && IsTrickOrOtherSpell(spell))
+            {
+                AcceptanceHook("X.Ineligible", true);
+                AcceptanceHook("X.IneligibleReason", why ?? "unknown");
             }
+        }
+
+        /// <summary>
+        /// 同一次施法内对同一发法术只报告一次。
+        ///
+        /// 实测：一次 BurningHands 施法会触发 RuleCalculateAbilityParams 约 24 次。
+        /// 用「键 + 时间窗」双重去重：
+        ///   - 键相同且距上次报告 &lt; 50ms  → 视为同一次施法的重复触发
+        ///   - 否则重新报告（玩家真的又放了一次同一个法术）
+        /// 单用键比对不够：交替放 A、B、A 时会被误判。
+        /// </summary>
+        private string _lastSeenKey;
+        private float _lastSeenTime = -999f;
+
+        private bool IsSameReported(AbilityData spell)
+        {
+            string key = (spell.Blueprint != null ? spell.Blueprint.name : "?") + "|" +
+                         spell.SpellLevel + "|" +
+                         (spell.SpellbookBlueprint != null ? spell.SpellbookBlueprint.name : "-");
+
+            float now = UnityEngine.Time.realtimeSinceStartup;
+            if (key == _lastSeenKey && now - _lastSeenTime < 0.05f)
+            {
+                _lastSeenTime = now;
+                return true;
+            }
+
+            _lastSeenKey = key;
+            _lastSeenTime = now;
+            return false;
         }
 
         public void OnEventDidTrigger(RuleCalculateAbilityParams evt)
@@ -202,24 +244,59 @@ namespace WizardArchetype
         ///
         /// 用反射调用 ModDiag.Embedded.Expect，这样 WizardArchetype 不硬依赖 ModDiag ——
         /// 没装 ModDiag 时静默跳过，装了才生效。
+        ///
+        /// ★ 为什么不用 Type.GetType("ModDiag.Embedded, ModDiag")：
+        ///   Unity 的 Mono 下 UMM 加载 MOD 的方式不走标准程序集解析，
+        ///   带程序集名的 Type.GetType 会返回 null（实测：埋点一次都没到验收层）。
+        ///   必须遍历 AppDomain 已加载程序集去找。
         /// </summary>
+        private static System.Reflection.MethodInfo s_ExpectMethod;
+        private static bool s_ExpectLookupDone;
+
         internal static void AcceptanceHook(string field, object value)
         {
             try
             {
-                var t = System.Type.GetType("ModDiag.Embedded, ModDiag");
-                if (t == null)
+                if (!s_ExpectLookupDone)
+                {
+                    s_ExpectLookupDone = true;
+                    s_ExpectMethod = FindExpectMethod();
+                    if (s_ExpectMethod == null)
+                    {
+                        Main.Log?.Log("[能力X] 未找到 ModDiag.Embedded.Expect，验收埋点已禁用（不影响功能）");
+                    }
+                    else
+                    {
+                        Main.Log?.Log("[能力X] 验收埋点已接通 → ModDiag.Embedded.Expect");
+                    }
+                }
+
+                if (s_ExpectMethod == null)
                 {
                     return;
                 }
-                var m = t.GetMethod("Expect",
-                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-                m?.Invoke(null, new object[] { field, field, value });
+
+                s_ExpectMethod.Invoke(null, new object[] { field, field, value });
             }
-            catch (System.Exception)
+            catch (System.Exception e)
             {
                 // 验收埋点绝不影响游戏逻辑
+                Main.Log?.Warning("[能力X] 验收埋点异常：" + e.GetType().Name + "：" + e.Message);
             }
+        }
+
+        private static System.Reflection.MethodInfo FindExpectMethod()
+        {
+            foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var t = asm.GetType("ModDiag.Embedded", false);
+                if (t == null) continue;
+
+                var m = t.GetMethod("Expect",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                if (m != null) return m;
+            }
+            return null;
         }
     }
 }
