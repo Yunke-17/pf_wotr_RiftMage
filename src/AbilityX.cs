@@ -51,6 +51,9 @@ namespace WizardArchetype
         {
             CreateText();
 
+            // 特殊恍惚蓝图（能力X 代价用，也供阶段4的战斗开场状态复用）
+            SpecialStatuses.Create(cache);
+
             // 1) 资源（每次休息 1 次）
             Resource = CreateResource(cache);
 

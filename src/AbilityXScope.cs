@@ -330,9 +330,39 @@ namespace WizardArchetype
                 AcceptanceHook("X.SRIgnored", evt.Context.ForceIgnoreSpellResist);
             }
 
+            // 代价（D7 / 说明书 §8.1）：被强化的法术**完成效果结算后**，
+            // 角色获得 1 轮特殊恍惚。使用能力X 本身不施加。
+            //
+            // 时机：RuleCastSpell.OnEventDidTrigger 已经是「法术放出去了、结算跑完」之后，
+            // 符合「完成效果结算后」的措辞，也天然满足「施法失败不施加」。
+            ApplyStaggeredCost();
+
             Buff?.Remove();
 
             AcceptanceHook("X.Consumed", true);
+        }
+
+        /// <summary>
+        /// 施加 1 轮特殊恍惚作为代价。
+        ///
+        /// 用自建的「特殊恍惚」而不是原版 Staggered：
+        /// 原版会被行动自如免疫，不满足说明书 §6.2。
+        /// 自建状态 + HasConditionBypassPatch 才能做到「不被行动自如免疫」。
+        /// </summary>
+        private void ApplyStaggeredCost()
+        {
+            if (!Main.EnableAbilityXCost) return;
+
+            var bp = SpecialStatuses.SpecialStaggered;
+            if (bp == null) return;
+
+            var unit = Owner;
+            if (unit == null) return;
+
+            Kingmaker.Designers.GameHelper.ApplyBuff(unit, bp, new Kingmaker.Utility.Rounds(1));
+
+            Main.Log?.Log($"[能力X] 代价：获得 1 轮特殊恍惚（{unit.CharacterName}）");
+            AcceptanceHook("X.CostStaggered", true);
         }
 
         /// <summary>

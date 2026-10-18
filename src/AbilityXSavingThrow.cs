@@ -85,10 +85,31 @@ namespace WizardArchetype
             // 这里改用可读的 Result 与「是否掷过」间接判断不划算，
             // 因此不做这项判断 —— 追加骰对已覆盖的结果没有副作用。
 
+            // 记录追加前的条目数：追加操作会往 Rerolls 里各加一条（只用于战斗日志显示）
+            int rerollsBefore = ruleRoll.Rerolls != null ? ruleRoll.Rerolls.Count : 0;
+
             for (int i = 0; i < need; i++)
             {
                 // takeBest: false ⇒ 取最低
                 ruleRoll.Reroll(Fact, false);
+            }
+
+            // ★ 合并日志条目，避免战斗文本出现「强化施法强化施法…」
+            //
+            // 原因：LogHelper.GetRollDescription（Kingmaker/TextTools/LogHelper.cs:66-78）
+            //   foreach (var rerollData in ruleRollDice.Rerolls)
+            //       text3 += blueprintUnitFact.Name;      ← 无分隔符拼接
+            //   ... Append(" [").Append(text3).Append("]")
+            // 我们追加 n-1 颗就产生 n-1 条 RerollData，日志于是显示成
+            //   [强化施法强化施法]（n=3 时）
+            //
+            // Rerolls 只被日志使用（全程序集搜索确认），合并不会影响结算：
+            // m_RerollAmount 与 RollHistory 都已在 Reroll() 里更新完毕。
+            // 保留第一条代表本次强化，删掉其余重复条目。
+            var rerolls = ruleRoll.Rerolls;
+            if (rerolls != null && rerolls.Count > rerollsBefore + 1)
+            {
+                rerolls.RemoveRange(rerollsBefore + 1, rerolls.Count - (rerollsBefore + 1));
             }
 
             // 验收埋点

@@ -33,6 +33,12 @@ namespace WizardArchetype
         /// <summary>本 MOD 的法师变体 GUID，蓝图构建时写入。</summary>
         public static BlueprintGuid WizardArchetypeGuid = BlueprintGuid.Empty;
 
+        /// <summary>
+        /// 能力X 的代价（强化法术成功后 1 轮特殊恍惚）。
+        /// 默认开启；关掉可用于隔离排查「恍惚副作用是否由本 MOD 引起」。
+        /// </summary>
+        public static bool EnableAbilityXCost = true;
+
         internal static void SetArchetypeGuid(BlueprintGuid guid)
         {
             WizardArchetypeGuid = guid;

@@ -166,6 +166,27 @@ class Verify
         CheckProperty(game, "Kingmaker.RuleSystem.RuleReason", "Context", "RuleReason.Context");
 
         Console.WriteLine();
+        Console.WriteLine("=== 阶段4 预览：特殊恍惚 + 免疫旁路（补丁G）===");
+        // 条件存储（纯计数，无来源）
+        CheckMethodWithParams(game, "Kingmaker.UnitLogic.UnitState", "HasCondition",
+            new[] { "Kingmaker.UnitLogic.UnitCondition" }, "UnitState.HasCondition(UnitCondition)");
+        CheckField(game, "Kingmaker.UnitLogic.UnitState", "m_Conditions");
+        CheckField(game, "Kingmaker.UnitLogic.UnitState", "m_ConditionsImmunity");
+        CheckProperty(game, "Kingmaker.UnitLogic.UnitState", "Owner", "UnitState.Owner");
+        // 施加条件的组件
+        CheckType(game, "Kingmaker.Designers.Mechanics.Buffs.BuffStatusCondition", "BuffStatusCondition");
+        CheckField(game, "Kingmaker.Designers.Mechanics.Buffs.BuffStatusCondition", "Condition");
+        // 战斗结束清除
+        CheckType(game, "Kingmaker.Designers.Mechanics.Facts.CombatStateTrigger", "CombatStateTrigger");
+        CheckType(game, "Kingmaker.UnitLogic.Mechanics.Actions.ContextActionRemoveSelf", "ContextActionRemoveSelf");
+        // 施加 Buff
+        CheckMethodWithParams(game, "Kingmaker.Designers.GameHelper", "ApplyBuff",
+            new[] { "Kingmaker.EntitySystem.Entities.UnitEntityData", "Kingmaker.UnitLogic.Buffs.Blueprints.BlueprintBuff",
+                    "System.Nullable`1" }, "GameHelper.ApplyBuff(UnitEntityData, BlueprintBuff, Rounds?)");
+        // UnitCondition.Staggered 必须在枚举里
+        CheckEnumMember(game, "Kingmaker.UnitLogic.UnitCondition", "Staggered");
+
+        Console.WriteLine();
         Console.WriteLine("=== 嵌套枚举 StatGetter.ValueType ===");
         var sg = game.Find("Kingmaker.EntitySystem.Properties.Getters.StatGetter", false);
         var nested = sg?.NestedTypes.FirstOrDefault(t => t.Name == "ValueType");
@@ -218,8 +239,11 @@ class Verify
             {
                 var actual = ps[i + offset].Type;
                 // TypeName 只有短名（RuleSpellResistanceCheck），FullName 才是全名；
-                // 调用方可能传任意一种，两边都允许。
-                if (actual.TypeName != paramTypes[i] && actual.FullName != paramTypes[i]) { all = false; break; }
+                // 泛型（Nullable`1）在 TypeName 里也不带命名空间，所以三种写法都接受。
+                string want = paramTypes[i];
+                string wantShort = want.Contains(".") ? want.Substring(want.LastIndexOf('.') + 1) : want;
+                if (actual.TypeName != want && actual.FullName != want && actual.TypeName != wantShort)
+                { all = false; break; }
             }
             if (!all) continue;
 
@@ -231,6 +255,23 @@ class Verify
         Console.WriteLine($"  [缺失] {label}: 存在 {ms.Length} 个同名重载但签名不匹配（" +
                           string.Join(" | ", ms.Select(m => m.Name + "(" + string.Join(", ", m.Parameters.Select(p => p.Type.TypeName)) + ")")) + "）");
         missing++;
+    }
+
+    /// <summary>校验枚举成员存在。</summary>
+    static void CheckEnumMember(ModuleDefMD mod, string typeName, string member)
+    {
+        var t = mod.Find(typeName, false);
+        if (t == null) { Console.WriteLine($"  [缺失] 枚举类型 {typeName}"); missing++; return; }
+
+        var f = t.Fields.FirstOrDefault(x => x.Name == member);
+        if (f == null || !f.IsLiteral)
+        {
+            Console.WriteLine($"  [缺失] {t.Name}.{member} 不是枚举成员");
+            missing++;
+            return;
+        }
+
+        Console.WriteLine($"  [OK] {t.Name}.{member} = {(f.Constant != null ? f.Constant.Value : "?")}");
     }
 
     static void CheckField(ModuleDefMD mod, string typeName, string field)
