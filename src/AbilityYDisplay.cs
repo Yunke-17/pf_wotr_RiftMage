@@ -65,7 +65,12 @@ namespace WizardArchetype
             {
                 name = "WizardArchetype_AbilityY_" + keyBase,
                 AssetGuid = BlueprintGuid.Parse(guid),
-                Stacking = StackingType.Replace,
+
+                // ★ Stacking 必须是 Rank，否则 Tooltip 不会显示层数。
+                //   TooltipTemplateBuff.Prepare（:39）：
+                //       m_Stacking = Blueprint.Stacking == StackingType.Rank && Rank > 1
+                //   用 Replace 时 Rank 会被 SetRank 正常设置，但 Tooltip 不显示「层数」一行。
+                Stacking = StackingType.Rank,
                 Frequency = DurationRate.Rounds,
                 // 允许 2 层（SetRank 的上限）；Buff 本身永久，由层数归零时手动移除
                 Ranks = 2,

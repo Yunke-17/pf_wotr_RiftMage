@@ -230,6 +230,17 @@ namespace WizardArchetype
                 Value = calc,
             };
 
+            // ★ 智力变化时必须重算。
+            //
+            // PropertyCalculator 的结果是在特性 **激活那一刻** 算出来并 AddModifier 进去的
+            // （AddContextStatBonus.OnTurnOn → CalculateBaseValue），
+            // 之后智力再怎么变（装备、buff、喝药）都不会自动刷新。
+            //
+            // RecalculateOnStatChange 订阅属性变化并触发 Fact.Reapply()
+            // （→ Deactivate/Activate → 重跑 OnTurnOn → 重新取智力）。
+            // 这正是用户要求的「包括临时给的智力 buff 或装备给的 buff」。
+            var recalc = new RecalculateOnStatChange { Stat = StatType.Intelligence };
+
             // 关键：必须用 CasterNamedProperty，不能用 ContextProperty。
             //
             // ContextValue.cs:227-228  ContextProperty 分支只做 context[PropertyName]，
@@ -252,7 +263,7 @@ namespace WizardArchetype
                 },
             };
 
-            return new BlueprintComponent[] { calcComp, bonus };
+            return new BlueprintComponent[] { calcComp, bonus, recalc };
         }
 
         /// <summary>
