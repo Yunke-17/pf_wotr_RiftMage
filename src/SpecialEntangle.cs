@@ -47,13 +47,14 @@ namespace WizardArchetype
         {
             if (SpecialEntangled != null) return;
 
-            WizardArchetypeBlueprints.RegisterText(KeyName, "特殊纠缠");
+            WizardArchetypeBlueprints.RegisterText(KeyName, "时序专注");
             WizardArchetypeBlueprints.RegisterText(KeyDesc,
-                "施放法师法术时必须额外通过一次专注检定，DC = 10 + ⌈法师等级 ÷ 2⌉ + 环位 × 2。\n" +
-                "· 检定成功：法术正常施放，并立即解除该状态\n" +
-                "· 检定失败：法术失效，并受到 1d2 点体质伤害（同一轮内最多结算一次）\n" +
-                "· 体质低于 3 时无法施放法师法术\n" +
-                "<b>该状态不会降低移动速度，也不会被「行动自如」免疫或解除。</b>");
+                "在陷入此状态期间施放法师法术，必须通过一次专注检定：\n" +
+                "<b>DC = 10 + ⌈法师等级 ÷ 2⌉ + 法术环位 × 2</b>\n" +
+                "· <b>检定成功</b>：法术正常施放，且该状态立即解除\n" +
+                "· <b>检定失败</b>：法术失效，你受到 1d2 点体质属性减损（同一轮内最多结算一次）\n" +
+                "· 若当前体质值低于 3，在状态持续期间无法施放任何法师法术\n" +
+                "<b>该状态不会降低移动速度，也无法被《行动自如》或类似效果预防与解除。</b>");
 
             var concentration = new SpecialEntangleConcentration
             {

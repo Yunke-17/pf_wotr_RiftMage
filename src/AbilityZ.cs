@@ -288,20 +288,21 @@ namespace WizardArchetype
         private static void CreateText()
         {
             const string k = "WizardArchetype.AbilityZ";
-            WizardArchetypeBlueprints.RegisterText(k + ".Name", "透支充能");
+            WizardArchetypeBlueprints.RegisterText(k + ".Name", "空隙透支");
             WizardArchetypeBlueprints.RegisterText(k + ".Desc",
-                "<b>整轮动作</b>。燃烧自身状态，夺回一次强化施法的机会。\n" +
+                "空隙法师燃烧自身的现实锚点，强行撬开一道缝隙，夺回一次爆发。\n" +
+                "使用<b>整轮动作</b>。\n" +
                 "<b>效果</b>\n" +
-                "· 使「强化施法」恢复 1 次可用次数（上限为 1）\n" +
+                "· 使【空隙湮灭】恢复 1 次可用充能\n" +
                 "· 获得 <b>30 秒力竭</b> 与 <b>90 秒疲劳</b>，两者同时开始计时\n" +
-                "  （力竭 30 秒结束后，疲劳仍会持续 60 秒）\n" +
+                "  （力竭 30 秒结束后，疲劳仍会继续 60 秒）\n" +
                 "· 这两种状态不会因战斗结束而提前清除\n" +
                 "<b>使用条件</b>\n" +
-                "· 仅当「强化施法」已无可用充能时才能使用\n" +
+                "· 仅当【空隙湮灭】已无可用充能时才能使用\n" +
                 "<b>使用次数</b>\n" +
-                "基础施法者等级 7 级起获得：7–11 级 1 次，12–16 级 2 次，17 级及以上 3 次。\n" +
+                "基础施法者等级 7 级起获得：7–11 级 1 次，12–16 级 2 次，17 级及以上 3 次；\n" +
                 "每次休息后恢复。");
-            WizardArchetypeBlueprints.RegisterText(k + ".ResourceName", "透支充能");
+            WizardArchetypeBlueprints.RegisterText(k + ".ResourceName", "空隙透支");
             WizardArchetypeBlueprints.RegisterText(k + ".ResourceDesc",
                 "基础施法者等级 7–11 级：1 次；12–16 级：2 次；17 级及以上：3 次。每次休息后恢复。");
         }

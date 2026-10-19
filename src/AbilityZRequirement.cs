@@ -46,7 +46,7 @@ namespace WizardArchetype
 
         public string GetAbilityCasterRestrictionUIText()
         {
-            return "「强化施法」尚有 1 次充能，无需透支";
+            return "【空隙湮灭】尚有 1 次充能，无需透支";
         }
     }
 }

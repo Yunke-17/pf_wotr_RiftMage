@@ -52,20 +52,25 @@ namespace WizardArchetype
             AbilityYDisplay.Create(cache);
 
             var up = CreateVariant(cache, AbilityY.GuidUp, "Up",
-                "+1 层：CL +1 / DC -2",
-                "施法者等级 +1，法术 DC -2。可与同方向叠加，最多 +2 层。\n迅捷动作，仅战斗中可用。",
+                "【裂隙穿透】",
+                "施法者等级 CL +1，但法术豁免 DC -2。\n" +
+                "可与同方向再叠加 1 层（最多 2 层）。激活期间【致密收束】不可用。\n" +
+                "迅捷动作，仅可在战斗中使用。",
                 AbilityYAction.Kind.Up, AbilityYRestriction.Kind.Up,
                 UnitCommand.CommandType.Swift, inCombatOnly: true);
 
             var down = CreateVariant(cache, AbilityY.GuidDown, "Down",
-                "-1 层：CL -1 / DC +2",
-                "施法者等级 -1，法术 DC +2。可与同方向叠加，最多 -2 层。\n迅捷动作，仅战斗中可用。",
+                "【致密收束】",
+                "法术豁免 DC +2，但施法者等级 CL -1。\n" +
+                "可与同方向再叠加 1 层（最多 2 层）。激活期间【裂隙穿透】不可用。\n" +
+                "迅捷动作，仅可在战斗中使用。",
                 AbilityYAction.Kind.Down, AbilityYRestriction.Kind.Down,
                 UnitCommand.CommandType.Swift, inCombatOnly: true);
 
             var cancel = CreateVariant(cache, AbilityY.GuidCancel, "Cancel",
-                "取消交换",
-                "清除全部施法参数交换效果，层数归 0。\n自由动作，消耗 1 次使用次数。",
+                "解除调谐",
+                "提前取消当前的【致密收束】或【裂隙穿透】效果，层数归 0。\n" +
+                "自由动作，消耗 1 次使用次数。",
                 AbilityYAction.Kind.Cancel, AbilityYRestriction.Kind.Cancel,
                 UnitCommand.CommandType.Free, inCombatOnly: true);
 
@@ -273,21 +278,21 @@ namespace WizardArchetype
         private static void CreateText()
         {
             const string k = "WizardArchetype.AbilityY";
-            WizardArchetypeBlueprints.RegisterText(k + ".Name", "施法参数交换");
+            WizardArchetypeBlueprints.RegisterText(k + ".Name", "空隙调谐");
             WizardArchetypeBlueprints.RegisterText(k + ".Desc",
-                "<b>迅捷动作</b>，仅可在战斗中使用。在施法者等级（CL）与法术 DC 之间进行取舍。\n" +
-                "<b>两个方向</b>\n" +
-                "· 每 +1 层：CL +1，法术 DC -2\n" +
-                "· 每 -1 层：CL -1，法术 DC +2\n" +
+                "空隙法师可在战斗中拨动自身的法力相位。\n" +
+                "使用<b>迅捷动作</b>选择以下一种状态激活，效果持续至战斗结束：\n" +
+                "· <b>【致密收束】</b>：法术豁免 DC +2，但施法者等级 CL -1\n" +
+                "· <b>【裂隙穿透】</b>：施法者等级 CL +1，但法术豁免 DC -2\n" +
                 "<b>限制</b>\n" +
-                "· 同方向最多叠加 2 层（即 ±2）\n" +
-                "· 两个方向互斥：已有正向层数时无法选择反向，需先「取消」\n" +
-                "· 修正只作用于法师法术书的法术，并持续至战斗结束\n" +
+                "· 同一状态最高叠加 2 层\n" +
+                "· 当应用其中一种状态时，另一种状态暂时不可用\n" +
+                "· 仅作用于法师法术书的法术\n" +
                 "<b>取消</b>\n" +
-                "以<b>自由动作</b>清除全部层数，同样消耗 1 次使用次数。\n" +
+                "战斗中可消耗<b>自由动作</b>并扣除 1 次使用次数，提前取消【致密收束】或【裂隙穿透】的效果。\n" +
                 "<b>使用次数</b>\n" +
                 "每次休息后恢复：⌈智力调整值 ÷ 2⌉ + ⌈法师等级 ÷ 2⌉。");
-            WizardArchetypeBlueprints.RegisterText(k + ".ResourceName", "施法参数交换");
+            WizardArchetypeBlueprints.RegisterText(k + ".ResourceName", "空隙调谐");
             WizardArchetypeBlueprints.RegisterText(k + ".ResourceDesc",
                 "每次休息后恢复：⌈智力调整值 ÷ 2⌉ + ⌈法师等级 ÷ 2⌉。");
         }

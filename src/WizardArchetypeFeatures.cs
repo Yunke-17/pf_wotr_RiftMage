@@ -137,7 +137,9 @@ namespace WizardArchetype
             };
 
             return NewFeature(cache, GuidSpellPen, "SpellPen",
-                "法术穿透训练", "进行法术抗性检定时获得 +2 加值。",
+                "幸运野兔：法术穿透",
+                "契约魔宠的直觉穿透了现实的褶皱。\n" +
+                "<b>进行法术穿透（法术抗力）检定时获得 +2 加值。</b>",
                 new BlueprintComponent[] { sp });
         }
 
@@ -160,7 +162,9 @@ namespace WizardArchetype
             };
 
             return NewFeature(cache, GuidInitiativeLevel, "InitiativeLevel",
-                "职业先攻", "先攻获得等同法师等级一半的加值（最多 +10）。",
+                "敏锐",
+                "随着对时序排斥的适应，空隙法师的神经反射被进一步异化。\n" +
+                "<b>先攻检定额外获得【法师等级 ÷ 2】的加值（最多 +10）。</b>",
                 new BlueprintComponent[] { bonus, rank });
         }
 
@@ -172,10 +176,11 @@ namespace WizardArchetype
                 : BuildDerivativeInitiativeComponents();
 
             return NewFeature(cache, GuidInitiativeInt, "InitiativeInt",
-                "智力先攻",
+                "敏锐",
                 Main.UseCappedInitiative
-                    ? "先攻获得智力调整值加值，但不超过法师职业等级。"
-                    : "先攻获得智力调整值加值。",
+                    ? "随着法师对时序排斥的适应，其神经反射被进一步异化。\n" +
+                      "<b>先攻检定额外获得智力调整值加值，上限为法师等级。</b>"
+                    : "先攻检定额外获得智力调整值加值。",
                 comps);
         }
 
@@ -339,8 +344,10 @@ namespace WizardArchetype
             }).ToArray();
 
             return NewFeature(cache, GuidPerceptionInt, "PerceptionInt",
-                "智力感知",
-                "察觉、学识（自然）、学识（宗教）检定使用智力调整值，若其高于感知调整值。",
+                "敏锐推演",
+                "空隙法师以严密的因果推演取代了模糊的直觉。\n" +
+                "<b>若智力高于感知，进行技能【察觉检定】时以智力调整值替代感知调整值。</b>\n" +
+                "（学识：自然与学识：宗教同样受益）",
                 comps);
         }
 
@@ -361,7 +368,9 @@ namespace WizardArchetype
             };
 
             return NewFeature(cache, GuidConcentration, "Concentration",
-                "专注训练", "专注检定获得加值，最高 +6。",
+                "空隙思维",
+                "空隙法师学会了在现实断裂的间隙中稳定自身的法力回路。\n" +
+                "<b>专注检定获得【法师等级 + 1】的加值，最大为 +6。</b>",
                 new BlueprintComponent[] { bonus, rank });
         }
 
@@ -380,7 +389,9 @@ namespace WizardArchetype
             };
 
             return NewFeature(cache, GuidInitiativeDouble, "InitiativeDouble",
-                "敏锐先攻", "先攻时掷两次 d20 并取较高结果。",
+                "幸运野兔：先攻优势",
+                "契约魔宠进一步强化了空隙法师的预判能力。\n" +
+                "<b>先攻检定获得优势：掷两次 d20 并取较高结果。</b>",
                 new BlueprintComponent[] { mod });
         }
 

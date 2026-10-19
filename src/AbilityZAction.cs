@@ -29,7 +29,7 @@ namespace WizardArchetype
     {
         public override string GetCaption()
         {
-            return "Ability Z: 透支充能";
+            return "空隙透支";
         }
 
         public override void RunAction()
