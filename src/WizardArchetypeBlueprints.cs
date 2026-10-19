@@ -49,27 +49,13 @@ namespace WizardArchetype
             RegisterText(KeyName, "空隙法师");
 
             // 变体描述：只写到「极速施法」为止（用户 2026-10-20 要求）。
-            // 后续的职业特性由各特性面板自身呈现，不在这里罗列。
+            // 后续的职业特性（含空隙排斥/湮灭/调谐/透支的说明）全部移除，
+            // 由各特性与能力面板自行呈现。
             // 关键词用 {g|Encyclopedia:Key}...{/g} 包起来 ⇒ 悬停显示术语说明。
             RegisterText(KeyDesc,
                 "空隙法师专注于捕捉刹那之间的现实缝隙。\n" +
                 "他们放弃了传统的学派研习与契约，以神经加速与肉体反冲为代价，" +
-                "换取破除因果的爆发以及近乎本能的极速施法。\n" +
-                "\n" +
-                "每场战斗开始时，" +
-                Glossary.Link(Glossary.KArchetype, "空隙法师") +
-                "必须承受现实法则的物理排斥——依先攻顺位陷入" +
-                Glossary.Link(Glossary.KTimeFocus, "时序专注") +
-                "或" +
-                Glossary.Link(Glossary.KTimeRecoil, "时序反冲") +
-                "。\n" +
-                "当他们学会主动撕开缝隙时，" +
-                Glossary.Link(Glossary.KVoidAnnihilation, "空隙湮灭") +
-                "与" +
-                Glossary.Link(Glossary.KVoidHarmony, "空隙调谐") +
-                "便成为其战斗的核心，而" +
-                Glossary.Link(Glossary.KVoidOverdraw, "空隙透支") +
-                "则是最后的底牌。");
+                "换取破除因果的爆发以及近乎本能的极速施法。");
 
             var bp = new BlueprintArchetype
             {
