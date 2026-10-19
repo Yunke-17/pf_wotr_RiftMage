@@ -82,12 +82,25 @@ namespace WizardArchetype
                 result.Add((3, abilityY));
             }
 
-            // E10–E17：能力 Z「透支充能」—— 按基础 CL 解锁（7 起），
-            // 因此挂在 1 级特性表里，靠可用次数为 0 时自动灰显来表达「尚未获得」。
+            // E10–E17：能力 Z「透支充能」—— 按基础 CL 解锁（7 起）。
+            //
+            // ★ 为什么挂多个等级而不是只挂 1 级：
+            //   法师成长表 GiveFeaturesForPreviousLevels = False（已核对 WizardProgression.jbp），
+            //   升级时**不会**补发低等级特性。
+            //   若只挂 1 级，已经升过级的角色（尤其本次更新前就 7 级的存档）
+            //   永远拿不到 Z —— 实测正是如此（蓝图与特性数都正确，角色身上却没有）。
+            //
+            // 挂 1/7/12/17 四个等级：既覆盖新建角色，也覆盖在各个 CL 档位上
+            // 刚好升一级的旧角色。
+            // 重复挂载是安全的：FeatureCollection.PrepareFactForAttach（:72-85）
+            // 对同一 blueprint 已存在的特性只做 AddRank，不会重复添加。
             var abilityZ = AbilityZ.Feature;
             if (abilityZ != null)
             {
-                result.Add((1, abilityZ));
+                foreach (var lv in new[] { 1, 7, 12, 17 })
+                {
+                    result.Add((lv, abilityZ));
+                }
             }
 
             // E18：法师 5 级自动获得「瞬发法术」原版专长

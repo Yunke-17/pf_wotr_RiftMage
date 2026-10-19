@@ -268,6 +268,20 @@ class Verify
             "SpellImmunity.SpellDescriptor");
 
         Console.WriteLine();
+        Console.WriteLine("=== 能力Z 可见性（IAbilityVisibilityProvider）===");
+        CheckType(game, "Kingmaker.UnitLogic.Abilities.Components.Base.IAbilityVisibilityProvider",
+            "IAbilityVisibilityProvider");
+        CheckMethodWithParams(game, "Kingmaker.UnitLogic.Abilities.Components.Base.IAbilityVisibilityProvider",
+            "IsAbilityVisible",
+            new[] { "Kingmaker.UnitLogic.Abilities.AbilityData" },
+            "IAbilityVisibilityProvider.IsAbilityVisible(AbilityData)");
+        // 补丁 J2：Buff 描述符免疫（另一条独立路径）
+        CheckType(game, "Kingmaker.UnitLogic.FactLogic.BuffDescriptorImmunity", "BuffDescriptorImmunity");
+        CheckMethodWithParams(game, "Kingmaker.UnitLogic.FactLogic.BuffDescriptorImmunity", "IsImmune",
+            new[] { "Kingmaker.UnitLogic.Mechanics.MechanicsContext" },
+            "BuffDescriptorImmunity.IsImmune(MechanicsContext)");
+
+        Console.WriteLine();
         Console.WriteLine("=== 嵌套枚举 StatGetter.ValueType ===");
         var sg = game.Find("Kingmaker.EntitySystem.Properties.Getters.StatGetter", false);
         var nested = sg?.NestedTypes.FirstOrDefault(t => t.Name == "ValueType");

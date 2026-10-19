@@ -52,8 +52,12 @@ namespace WizardArchetype
         internal const string GuidFeature = "b1000000000000000000000000000040";
         internal const string GuidResource = "b1000000000000000000000000000041";
         internal const string GuidAbility = "b1000000000000000000000000000042";
-        internal const string GuidExhaustedBuff = "b1000000000000000000000000000043";
-        internal const string GuidFatiguedBuff = "b1000000000000000000000000000044";
+
+        // 原版状态 GUID（已核对蓝图：Fatigued 只有 AddCondition{Fatigued}；
+        // Exhausted 是 AddCondition{Slowed}+AddCondition{Exhausted}，
+        // 两者都没有「力竭解除后转疲劳」的联动动作）
+        private const string VanillaExhausted = "46d1b9cc3d0fd36469a471b047d773a2";
+        private const string VanillaFatigued = "e6f2fc5d73d88064583cb828801212f4";
 
         /// <summary>解锁所需基础 CL（§10.1）。</summary>
         internal const int UnlockCasterLevel = 7;
@@ -69,65 +73,21 @@ namespace WizardArchetype
         {
             CreateText();
 
-            ExhaustedBuff = CreateConditionBuff(cache, GuidExhaustedBuff, "ZExhausted",
-                "透支（力竭）",
-                "力竭：攻击检定、豁免检定、技能检定 -2，移动速度降低。\n" +
-                "由「透支充能」造成，持续 30 秒，不因战斗结束提前清除。",
-                UnitCondition.Exhausted);
+            // 直接套用原版状态（用户 2026-10-19 要求）
+            ExhaustedBuff = cache.Load(BlueprintGuid.Parse(VanillaExhausted)) as BlueprintBuff;
+            FatiguedBuff = cache.Load(BlueprintGuid.Parse(VanillaFatigued)) as BlueprintBuff;
 
-            FatiguedBuff = CreateConditionBuff(cache, GuidFatiguedBuff, "ZFatigued",
-                "透支（疲劳）",
-                "疲劳：攻击检定、豁免检定、技能检定 -1，无法奔跑或冲锋。\n" +
-                "由「透支充能」造成，持续 60 秒，不因战斗结束提前清除。",
-                UnitCondition.Fatigued);
+            if (ExhaustedBuff == null || FatiguedBuff == null)
+            {
+                Main.Log?.Error("[能力Z] 原版力竭/疲劳状态加载失败，效果将不完整");
+            }
 
             Resource = CreateResource(cache);
             Ability = CreateAbility(cache);
             Feature = CreateFeature(cache);
 
-            Main.Log?.Log("WizardArchetype: 能力Z 蓝图已构建");
+            Main.Log?.Log("WizardArchetype: 能力Z 蓝图已构建（套用原版力竭/疲劳）");
             return Feature;
-        }
-
-        // ---------- 条件 Buff ----------
-
-        private static BlueprintBuff CreateConditionBuff(BlueprintsCache cache, string guid, string keyBase,
-            string name, string desc, UnitCondition condition)
-        {
-            const string root = "WizardArchetype.AbilityZ.";
-            WizardArchetypeBlueprints.RegisterText(root + keyBase + ".Name", name);
-            WizardArchetypeBlueprints.RegisterText(root + keyBase + ".Desc", desc);
-
-            var add = new Kingmaker.Designers.Mechanics.Buffs.BuffStatusCondition
-            {
-                name = "$BuffStatusCondition$" + keyBase,
-                Condition = condition,
-                SaveEachRound = false,
-                SaveType = Kingmaker.EntitySystem.Stats.SavingThrowType.Unknown,
-            };
-
-            var buff = new BlueprintBuff
-            {
-                name = "WizardArchetype_" + keyBase,
-                AssetGuid = BlueprintGuid.Parse(guid),
-                Stacking = StackingType.Replace,
-                // Frequency 只影响「每轮/每分钟」类效果；实际时长由 AddBuff 的 TimeSpan 决定。
-                // DurationRate 没有 Seconds 枚举值（Rounds/Minutes/TenMinutes/Hours/Days）。
-                Frequency = DurationRate.Rounds,
-                Ranks = 0,
-                IsClassFeature = false,
-                ComponentsArray = new BlueprintComponent[] { add },
-                FxOnRemove = new Kingmaker.ResourceLinks.PrefabLink(),
-            };
-
-            ReflectionFields.Set(buff, "m_DisplayName", new LocalizedString { Key = root + keyBase + ".Name" });
-            ReflectionFields.Set(buff, "m_Description", new LocalizedString { Key = root + keyBase + ".Desc" });
-
-            foreach (var c in buff.ComponentsArray)
-                if (c != null) c.OwnerBlueprint = buff;
-
-            cache.AddCachedBlueprint(BlueprintGuid.Parse(guid), buff);
-            return buff;
         }
 
         // ---------- 资源：按 CL 分档 ----------
@@ -236,11 +196,11 @@ namespace WizardArchetype
             ReflectionFields.Set(logic, "m_IsSpendResource", true);
             comps.Add(logic);
 
-            // 条件：战斗中
-            comps.Add(new AbilityCasterInCombat { name = "$AbilityCasterInCombat$AbilityZ" });
-
-            // 条件：能力X 无可用次数（§10.2 ③）
+            // 条件：能力X 次数不为 1（用户 2026-10-19：只有次数为 1 时不能用）
             comps.Add(new AbilityZRequirement { name = "$AbilityZRequirement$AbilityZ" });
+
+            // 可见性：CL < 7 时不在能力栏出现（用户要求「不出现」而非灰显）
+            comps.Add(new AbilityZVisibility { name = "$AbilityZVisibility$AbilityZ" });
 
             var ability = new BlueprintAbility
             {
