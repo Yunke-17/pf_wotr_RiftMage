@@ -282,6 +282,16 @@ class Verify
             "BuffDescriptorImmunity.IsImmune(MechanicsContext)");
 
         Console.WriteLine();
+        Console.WriteLine("=== 能力Z 串行状态链（力竭 30s → 疲劳 60s）===");
+        CheckType(game, "Kingmaker.UnitLogic.Mechanics.Components.AddFactContextActions",
+            "AddFactContextActions");
+        CheckField(game, "Kingmaker.UnitLogic.Mechanics.Components.AddFactContextActions", "Deactivated");
+        // DurationSeconds 是 float 字段（不是 ContextValue），写错会编译失败或静默为 0
+        CheckField(game, "Kingmaker.UnitLogic.Mechanics.Actions.ContextActionApplyBuff", "DurationSeconds");
+        CheckField(game, "Kingmaker.UnitLogic.Mechanics.Actions.ContextActionApplyBuff", "UseDurationSeconds");
+        CheckField(game, "Kingmaker.UnitLogic.Mechanics.Actions.ContextActionApplyBuff", "m_Buff");
+
+        Console.WriteLine();
         Console.WriteLine("=== 嵌套枚举 StatGetter.ValueType ===");
         var sg = game.Find("Kingmaker.EntitySystem.Properties.Getters.StatGetter", false);
         var nested = sg?.NestedTypes.FirstOrDefault(t => t.Name == "ValueType");

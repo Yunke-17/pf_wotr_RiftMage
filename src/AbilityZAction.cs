@@ -81,31 +81,33 @@ namespace WizardArchetype
             }
         }
 
-        /// <summary>施加 30 秒力竭 + 60 秒疲劳（同时开始计时）。</summary>
+        /// <summary>
+        /// 施加力竭 30 秒（用户 2026-10-20 修正为**串行**）：
+        ///   力竭 30s → 结束后（由 Buff 的 Deactivated 动作）接 60s 疲劳
+        ///
+        /// 所以这里**只施加力竭**，疲劳由 AbilityZStatus 里那个 Buff 的
+        /// AddFactContextActions.Deactivated 自动接上。
+        /// </summary>
         private static void ApplyConditions(UnitEntityData unit)
         {
             try
             {
                 var exhausted = AbilityZ.ExhaustedBuff;
-                var fatigued = AbilityZ.FatiguedBuff;
-
-                if (exhausted != null)
+                if (exhausted == null)
                 {
-                    // AddBuff 在 BuffCollection 上（UnitDescriptor.Buffs），不在 UnitDescriptor 上。
-                    // 秒级时长：直接传 TimeSpan，避免用轮次（轮次会在战斗结束时被清）。
-                    unit.Descriptor.Buffs.AddBuff(exhausted, unit, TimeSpan.FromSeconds(30));
-                }
-                if (fatigued != null)
-                {
-                    unit.Descriptor.Buffs.AddBuff(fatigued, unit, TimeSpan.FromSeconds(60));
+                    Main.Log?.Error("[能力Z] 力竭状态缺失，效果未施加");
+                    return;
                 }
 
-                Main.Log?.Log("[能力Z] 获得 30 秒力竭 + 60 秒疲劳");
+                // 秒级时长：避免轮次时长在战斗结束时被清掉
+                unit.Descriptor.Buffs.AddBuff(exhausted, unit, TimeSpan.FromSeconds(30));
+
+                Main.Log?.Log("[能力Z] 获得 30 秒力竭（结束后自动转 60 秒疲劳）");
                 AbilityXScope.AcceptanceHook("X.ZConditions", true);
             }
             catch (Exception e)
             {
-                Main.Log?.Warning("[能力Z] 施加强化状态失败：" + e.Message);
+                Main.Log?.Warning("[能力Z] 施加力竭状态失败：" + e.Message);
             }
         }
     }

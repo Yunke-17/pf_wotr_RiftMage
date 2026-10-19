@@ -53,12 +53,6 @@ namespace WizardArchetype
         internal const string GuidResource = "b1000000000000000000000000000041";
         internal const string GuidAbility = "b1000000000000000000000000000042";
 
-        // 原版状态 GUID（已核对蓝图：Fatigued 只有 AddCondition{Fatigued}；
-        // Exhausted 是 AddCondition{Slowed}+AddCondition{Exhausted}，
-        // 两者都没有「力竭解除后转疲劳」的联动动作）
-        private const string VanillaExhausted = "46d1b9cc3d0fd36469a471b047d773a2";
-        private const string VanillaFatigued = "e6f2fc5d73d88064583cb828801212f4";
-
         /// <summary>解锁所需基础 CL（§10.1）。</summary>
         internal const int UnlockCasterLevel = 7;
 
@@ -66,21 +60,18 @@ namespace WizardArchetype
         internal static BlueprintAbilityResource Resource { get; private set; }
         internal static BlueprintAbility Ability { get; private set; }
 
-        internal static BlueprintBuff ExhaustedBuff { get; private set; }
-        internal static BlueprintBuff FatiguedBuff { get; private set; }
+        /// <summary>力竭（30s，结束后接疲劳）—— 见 AbilityZStatus。</summary>
+        internal static BlueprintBuff ExhaustedBuff { get { return AbilityZStatus.ExhaustedBuff; } }
+
+        /// <summary>疲劳（60s）—— 直接复用原版。</summary>
+        internal static BlueprintBuff FatiguedBuff { get { return AbilityZStatus.FatiguedBuff; } }
 
         internal static BlueprintFeature Create(BlueprintsCache cache)
         {
             CreateText();
 
-            // 直接套用原版状态（用户 2026-10-19 要求）
-            ExhaustedBuff = cache.Load(BlueprintGuid.Parse(VanillaExhausted)) as BlueprintBuff;
-            FatiguedBuff = cache.Load(BlueprintGuid.Parse(VanillaFatigued)) as BlueprintBuff;
-
-            if (ExhaustedBuff == null || FatiguedBuff == null)
-            {
-                Main.Log?.Error("[能力Z] 原版力竭/疲劳状态加载失败，效果将不完整");
-            }
+            // 状态链：力竭 30s → 结束后疲劳 60s（用户 2026-10-20 修正为串行）
+            AbilityZStatus.Create(cache);
 
             Resource = CreateResource(cache);
             Ability = CreateAbility(cache);
