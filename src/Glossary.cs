@@ -44,6 +44,47 @@ namespace WizardArchetype
         internal const string KVoidHarmony = "WizGapVoidHarmony";
         internal const string KVoidOverdraw = "WizGapVoidOverdraw";
 
+        // ---- 复用原版已有术语（不重复注册，直接引用其 key）----
+        //
+        // 原版 GlossaryHolder 里已经有的 key，我们只管用，不覆盖：
+        //   Skills             技能检定
+        //   Initiative         先攻
+        //   Saving_Throw       豁免检定
+        //   Spell_Resistance   法术抗力
+        //   Concentration      专注
+        //   Ability_Scores     属性值（智力/感知等）
+        // 用常量集中管理，便于查错。
+
+        /// <summary>原版：技能检定</summary>
+        internal const string KSkills = "Skills";
+
+        /// <summary>原版：先攻</summary>
+        internal const string KInitiative = "Initiative";
+
+        /// <summary>原版：豁免检定</summary>
+        internal const string KSavingThrow = "Saving_Throw";
+
+        /// <summary>原版：法术抗力</summary>
+        internal const string KSpellResistance = "Spell_Resistance";
+
+        /// <summary>原版：专注</summary>
+        internal const string KConcentration = "Concentration";
+
+        /// <summary>原版：难度等级（DC）</summary>
+        internal const string KDC = "DC";
+
+        /// <summary>自建：施法者等级（原版术语表里没有 CasterLevel 这个 key，已核对 zhCN.json）</summary>
+        internal const string KCasterLevel = "WizGapCasterLevel";
+
+        /// <summary>自建：法术穿透检定（原版没有精确对应的术语）</summary>
+        internal const string KSpellPenetration = "WizGapSpellPenetration";
+
+        /// <summary>自建：智力调整值</summary>
+        internal const string KIntMod = "WizGapIntMod";
+
+        /// <summary>自建：法师等级</summary>
+        internal const string KWizardLevel = "WizGapWizardLevel";
+
         private static bool s_Injected;
 
         internal static void Inject()
@@ -156,6 +197,38 @@ namespace WizardArchetype
             Add(KVoidAnnihilation, r + "VoidAnnihilation.Name", r + "VoidAnnihilation.Desc");
             Add(KVoidHarmony, r + "VoidHarmony.Name", r + "VoidHarmony.Desc");
             Add(KVoidOverdraw, r + "VoidOverdraw.Name", r + "VoidOverdraw.Desc");
+
+            // ---- 以下三个是原版没有、但本 MOD 反复用到的概念 ----
+
+            WizardArchetypeBlueprints.RegisterText(r + "SpellPenetration.Name", "法术穿透检定");
+            WizardArchetypeBlueprints.RegisterText(r + "SpellPenetration.Desc",
+                "施法者为克服目标的法术抗力（" +
+                "{g|Encyclopedia:" + KSpellResistance + "}法术抗力{/g}）而进行的检定。\n" +
+                "法术穿透检定 = d20 + 施法者等级 + 各类穿透加值，对抗目标的法术抗力数值。\n" +
+                "成功则法术对目标正常生效，失败则法术被抵抗。");
+
+            WizardArchetypeBlueprints.RegisterText(r + "IntMod.Name", "智力调整值");
+            WizardArchetypeBlueprints.RegisterText(r + "IntMod.Desc",
+                "由智力属性换算得到的调整值：（智力 - 10）÷ 2，向下取整。\n" +
+                "智力 10–11 → +0；12–13 → +1；14–15 → +2；以此类推。\n" +
+                "装备、增益与临时效果提供的智力加值会一并计入。");
+
+            WizardArchetypeBlueprints.RegisterText(r + "WizardLevel.Name", "法师等级");
+            WizardArchetypeBlueprints.RegisterText(r + "WizardLevel.Desc",
+                "角色在「法师」职业（含本变体）上投入的等级，\n" +
+                "不等于角色总等级。兼职时两者会不同。\n" +
+                "本职业多数特性的档位按法师等级而非总等级计算。");
+
+            WizardArchetypeBlueprints.RegisterText(r + "CasterLevel.Name", "施法者等级");
+            WizardArchetypeBlueprints.RegisterText(r + "CasterLevel.Desc",
+                "决定法术强度、可施放环位与诸多法术效果的等级数值。\n" +
+                "通常等于对应职业的等级；神话道途「合书」后会额外提高。\n" +
+                "施法者等级越高，法术的持续时间、伤害骰数量与穿透能力往往越强。");
+
+            Add(KSpellPenetration, r + "SpellPenetration.Name", r + "SpellPenetration.Desc");
+            Add(KIntMod, r + "IntMod.Name", r + "IntMod.Desc");
+            Add(KWizardLevel, r + "WizardLevel.Name", r + "WizardLevel.Desc");
+            Add(KCasterLevel, r + "CasterLevel.Name", r + "CasterLevel.Desc");
         }
 
         /// <summary>生成悬停标记：{g|Encyclopedia:Key}文字{/g}</summary>

@@ -68,13 +68,15 @@ namespace WizardArchetype
             AddOriginal(result, cache, 1, HareBond, "幸运野兔");
             AddSkillFocusArcana(result, cache);
 
-            result.Add((1, MakeInitiativeFromLevel(cache)));
-            result.Add((1, MakeInitiativeFromInt(cache)));
+            // 敏锐：职业先攻 + 智力先攻合并为**一个**特性
+            result.Add((1, MakeInsight(cache)));
             result.Add((1, MakePerceptionFromInt(cache)));
             result.Add((1, MakeConcentration(cache)));
-            result.Add((3, MakeSpellPenetration(cache)));
 
-            // E1–E9：能力 Y「施法参数交换」—— 法师 3 级，迅捷动作
+            // 幸运野兔系：1 级主特性 + 3/7 级进阶（用前置链串起来）
+            BuildHareChain(result, cache);
+
+            // E1–E9：能力 Y「空隙调谐」—— 法师 3 级，迅捷动作
             // 蓝图在 AbilityX.Create 里已构建（见 AbilityYBlueprints.Create）
             var abilityY = AbilityYBlueprints.Feature;
             if (abilityY != null)
@@ -82,25 +84,19 @@ namespace WizardArchetype
                 result.Add((3, abilityY));
             }
 
-            // E10–E17：能力 Z「透支充能」—— 按基础 CL 解锁（7 起）。
+            // E10–E17：能力 Z「空隙透支」—— 按基础 CL 解锁（7 起）。
             //
-            // ★ 为什么挂多个等级而不是只挂 1 级：
-            //   法师成长表 GiveFeaturesForPreviousLevels = False（已核对 WizardProgression.jbp），
-            //   升级时**不会**补发低等级特性。
-            //   若只挂 1 级，已经升过级的角色（尤其本次更新前就 7 级的存档）
-            //   永远拿不到 Z —— 实测正是如此（蓝图与特性数都正确，角色身上却没有）。
-            //
-            // 挂 1/7/12/17 四个等级：既覆盖新建角色，也覆盖在各个 CL 档位上
-            // 刚好升一级的旧角色。
-            // 重复挂载是安全的：FeatureCollection.PrepareFactForAttach（:72-85）
-            // 对同一 blueprint 已存在的特性只做 AddRank，不会重复添加。
+            // ★ 「只显示一个」的处理（用户 2026-10-20）：
+            //   之前挂 1/7/12/17 四个等级，特性列表里会出现 4 个同名条目。
+            //   现在改为：
+            //     · 只用**一个** LevelEntry（1 级），保证列表只出现一次；
+            //     · 为了让已升级的旧存档也能拿到，在 HandleUnitAfterLevelUp 里
+            //       检测并补发（见 AbilityZResourceSync）。
+            //   这样既不重复显示，也不依赖成长表的追溯设置。
             var abilityZ = AbilityZ.Feature;
             if (abilityZ != null)
             {
-                foreach (var lv in new[] { 1, 7, 12, 17 })
-                {
-                    result.Add((lv, abilityZ));
-                }
+                result.Add((1, abilityZ));
             }
 
             // E18：法师 5 级自动获得「瞬发法术」原版专长
@@ -139,14 +135,24 @@ namespace WizardArchetype
             return NewFeature(cache, GuidSpellPen, "SpellPen",
                 "幸运野兔：法术穿透",
                 "契约魔宠的直觉穿透了现实的褶皱。\n" +
-                "<b>进行法术穿透（法术抗力）检定时获得 +2 加值。</b>",
+                "<b>进行" + Glossary.Link(Glossary.KSpellPenetration, "法术穿透检定") + "时获得 +2 加值。</b>",
                 new BlueprintComponent[] { sp });
         }
 
-        // ---------- B10：职业先攻 floor(L/2)，封顶 10 ----------
-        private static SimpleBlueprint MakeInitiativeFromLevel(BlueprintsCache cache)
+        // ---------- 敏锐：职业先攻 + 智力先攻（合并为一个特性）----------
+
+        /// <summary>
+        /// 用户 2026-10-20：把「职业先攻」与「智力先攻」合并成**一个**特性「敏锐」。
+        ///
+        /// 两个来源：
+        ///   ① 法师等级 ÷ 2（Div2，封顶 10）
+        ///   ② min(智力调整值, 法师等级)
+        /// 都用 AddContextStatBonus 加到 Initiative，各自独立计算、互相叠加。
+        /// </summary>
+        private static SimpleBlueprint MakeInsight(BlueprintsCache cache)
         {
-            var rank = RankConfigs.Build(
+            // ① 职业等级先攻：floor(L/2)，封顶 10
+            var classRank = RankConfigs.Build(
                 ContextRankBaseValueType.ClassLevel,
                 ContextRankProgression.Div2,          // value / 2，见 ContextRankConfig.cs:564-565
                 stepLevel: 1,
@@ -154,35 +160,89 @@ namespace WizardArchetype
                 useMin: true, min: 0,
                 useMax: true, max: 10);
 
-            var bonus = new AddContextStatBonus
+            var classBonus = new AddContextStatBonus
             {
                 Stat = StatType.Initiative,
                 Descriptor = ModifierDescriptor.UntypedStackable,
                 Value = new ContextValue { ValueType = ContextValueType.Rank },
             };
 
-            return NewFeature(cache, GuidInitiativeLevel, "InitiativeLevel",
-                "敏锐",
-                "随着对时序排斥的适应，空隙法师的神经反射被进一步异化。\n" +
-                "<b>先攻检定额外获得【法师等级 ÷ 2】的加值（最多 +10）。</b>",
-                new BlueprintComponent[] { bonus, rank });
-        }
-
-        // ---------- B7 + B8：先攻 + min(IntMod, 法师职业等级) ----------
-        private static SimpleBlueprint MakeInitiativeFromInt(BlueprintsCache cache)
-        {
-            var comps = Main.UseCappedInitiative
+            // ② 智力先攻：min(IntMod, 法师等级)
+            var intComps = Main.UseCappedInitiative
                 ? BuildCappedInitiativeComponents()
                 : BuildDerivativeInitiativeComponents();
 
-            return NewFeature(cache, GuidInitiativeInt, "InitiativeInt",
-                "敏锐",
-                Main.UseCappedInitiative
-                    ? "随着法师对时序排斥的适应，其神经反射被进一步异化。\n" +
-                      "<b>先攻检定额外获得智力调整值加值，上限为法师等级。</b>"
-                    : "先攻检定额外获得智力调整值加值。",
-                comps);
+            var all = new List<BlueprintComponent> { classBonus, classRank };
+            all.AddRange(intComps);
+
+            string desc =
+                "随着对时序排斥的适应，空隙法师的神经反射被进一步异化。\n" +
+                "<b>先攻检定额外获得【1/2 法师等级】的加值（最多 +10）。</b>\n" +
+                (Main.UseCappedInitiative
+                    ? "<b>此外，先攻检定额外获得" +
+                      Glossary.Link(Glossary.KIntMod, "智力调整值") +
+                      "，上限为法师等级。</b>"
+                    : "<b>此外，先攻检定额外获得" +
+                      Glossary.Link(Glossary.KIntMod, "智力调整值") + "。</b>");
+
+            // 复用 GuidInitiativeInt 作为合并后的特性 GUID（另一个不再使用）
+            return NewFeature(cache, GuidInitiativeInt, "Insight",
+                "敏锐", desc, all.ToArray());
         }
+
+        // ---------- 幸运野兔链：1 级主特性 + 3/7 级进阶 ----------
+
+        /// <summary>
+        /// 用户 2026-10-20：三个「幸运野兔」特性要在特性列表里显示成一排并连起来，
+        /// 表示它们是同一条连续成长的线。
+        ///
+        /// 实现方式：`BlueprintFeature.IsPrerequisiteFor`（前置链）。
+        ///   幸运野兔(1级) → 幸运野兔：法术穿透(3级) → 幸运野兔：先攻优势(7级)
+        ///
+        /// IsPrerequisiteFor 会在角色面板里把后续特性显示为「前置于此」的条目，
+        /// 视觉上就是一条竖排的链（与原版 MythicFeat / 血统进阶的呈现方式一致）。
+        /// 它是纯 UI 字段，不影响实际的特性授予逻辑。
+        /// </summary>
+        private static void BuildHareChain(List<(int Level, SimpleBlueprint Feature)> result, BlueprintsCache cache)
+        {
+            var baseHare = cache.Load(BlueprintGuid.Parse(HareBond)) as BlueprintFeature;
+            if (baseHare == null)
+            {
+                Main.Log?.Error("[幸运野兔] 原版主特性加载失败，进阶特性将独立显示");
+                result.Add((3, MakeSpellPenetration(cache)));
+                result.Add((7, MakeInitiativeDoubleRoll(cache)));
+                return;
+            }
+
+            var tier1 = MakeSpellPenetration(cache) as BlueprintFeature;
+            var tier2 = MakeInitiativeDoubleRoll(cache) as BlueprintFeature;
+
+            // 串链：主 → 3级 → 7级
+            // 注意：原版蓝图是共享对象，改 IsPrerequisiteFor 只影响显示、不影响授予。
+            if (tier1 != null)
+            {
+                baseHare.IsPrerequisiteFor = new List<BlueprintFeatureReference>
+                {
+                    BlueprintReference<BlueprintFeature>.CreateTyped<BlueprintFeatureReference>(tier1),
+                };
+            }
+
+            if (tier1 != null && tier2 != null)
+            {
+                tier1.IsPrerequisiteFor = new List<BlueprintFeatureReference>
+                {
+                    BlueprintReference<BlueprintFeature>.CreateTyped<BlueprintFeatureReference>(tier2),
+                };
+            }
+
+            result.Add((3, tier1));
+            result.Add((7, tier2));
+        }
+
+        // ---------- （已合并进 MakeInsight，保留此注释便于追溯）----------
+        // 原 MakeInitiativeFromLevel（职业先攻独立特性）与
+        // 原 MakeInitiativeFromInt（智力先攻独立特性）
+        // 已于 2026-10-20 合并为单一特性「敏锐」。
 
         /// <summary>
         /// 回退方案：原版剑圣「疾电出鞘」（SwordSaintLightningDraw.jbp）的写法。
@@ -346,8 +406,11 @@ namespace WizardArchetype
             return NewFeature(cache, GuidPerceptionInt, "PerceptionInt",
                 "敏锐推演",
                 "空隙法师以严密的因果推演取代了模糊的直觉。\n" +
-                "<b>若智力高于感知，进行技能【察觉检定】时以智力调整值替代感知调整值。</b>\n" +
-                "（学识：自然与学识：宗教同样受益）",
+                "<b>若智力高于感知，进行" +
+                Glossary.Link(Glossary.KSkills, "技能检定") +
+                "时以" +
+                Glossary.Link(Glossary.KIntMod, "智力调整值") +
+                "替代感知调整值。</b>",
                 comps);
         }
 
@@ -370,7 +433,8 @@ namespace WizardArchetype
             return NewFeature(cache, GuidConcentration, "Concentration",
                 "空隙思维",
                 "空隙法师学会了在现实断裂的间隙中稳定自身的法力回路。\n" +
-                "<b>专注检定获得【法师等级 + 1】的加值，最大为 +6。</b>",
+                "<b>" + Glossary.Link(Glossary.KConcentration, "专注检定") +
+                "获得【法师等级 + 1】的加值，最大为 +6。</b>",
                 new BlueprintComponent[] { bonus, rank });
         }
 

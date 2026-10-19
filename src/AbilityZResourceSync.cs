@@ -37,7 +37,40 @@ namespace WizardArchetype
         public void HandleUnitAfterLevelUp(UnitEntityData unit, Kingmaker.UnitLogic.Class.LevelUp.LevelUpController controller)
         {
             if (unit == null || unit != Owner) return;
+
+            // 旧存档补发（用户 2026-10-20 要求「只显示一个」后引入）：
+            // Z 现在只挂在 1 级，而成长表 GiveFeaturesForPreviousLevels = False，
+            // 升级时不会补发低等级特性。所以已升过级的旧角色第一次升级后
+            // 在这里补挂一次（AddFact 对已存在的 blueprint 只做 AddRank，不会重复）。
+            EnsureFeaturePresent(unit);
+
             Sync(true);
+        }
+
+        /// <summary>确保单位身上有「空隙透支」特性（旧存档补发用）。</summary>
+        private static void EnsureFeaturePresent(UnitEntityData unit)
+        {
+            try
+            {
+                var bp = AbilityZ.Feature;
+                if (bp == null || unit == null) return;
+
+                if (unit.Descriptor.Progression.Features.HasFact(bp)) return;
+
+                var wiz = WizardArchetypeBlueprints.WizardClass;
+                if (wiz == null) return;
+
+                // 只补给使用本变体的法师
+                int lvl = unit.Progression.GetClassLevel(wiz);
+                if (lvl < 1) return;
+
+                unit.Descriptor.Progression.Features.AddFeature(bp);
+                Main.Log?.Log("[能力Z] 旧存档补发「空隙透支」特性");
+            }
+            catch (Exception e)
+            {
+                Main.Log?.Warning("[能力Z] 补发特性失败：" + e.Message);
+            }
         }
 
         public void HandleUnitJoinCombat(UnitEntityData unit)
