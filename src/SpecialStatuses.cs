@@ -65,7 +65,8 @@ namespace WizardArchetype
             WizardArchetypeBlueprints.RegisterText(KeyName, "特殊恍惚");
             WizardArchetypeBlueprints.RegisterText(KeyDesc,
                 "每轮只能进行一个移动动作或一个标准动作，不能进行整轮动作。\n" +
-                "该状态不会被「行动自如」免疫或解除。");
+                "<b>该状态不会被「行动自如」免疫或解除。</b>\n" +
+                "战斗开始时若你的先攻低于任一敌人，或被「强化施法」的代价触发，都会陷入此状态。");
 
             var condition = new BuffStatusCondition
             {
@@ -120,6 +121,9 @@ namespace WizardArchetype
 
             cache.AddCachedBlueprint(BlueprintGuid.Parse(GuidSpecialStaggered), buff);
             SpecialStaggered = buff;
+
+            // 图标与特效（精神类负面状态 → 复用恐惧术起始特效）
+            IconsAndFx.ApplySpecialStatus(cache, buff);
 
             Main.Log?.Log("WizardArchetype: 已创建「特殊恍惚」蓝图");
         }

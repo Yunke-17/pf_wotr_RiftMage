@@ -72,7 +72,12 @@ namespace WizardArchetype
             var parent = CreateParent(cache, up, down, cancel);
             Feature = CreateFeature(cache, parent);
 
-            Main.Log?.Log("WizardArchetype: 能力Y 蓝图已构建（+1层 / -1层 / 取消）");
+            // 图标（用户 2026-10-20 新增需求）：特性 + 父能力 + 三变体
+            IconsAndFx.ApplyAbilityY(cache, Feature, parent, up, down, cancel);
+            // 层数显示 Buff 的图标
+            IconsAndFx.ApplyAbilityYBuffs(cache, AbilityYDisplay.UpBuff, AbilityYDisplay.DownBuff);
+
+            Main.Log?.Log("WizardArchetype: 能力Y 蓝图已构建（+1层 / -1层 / 取消，含图标）");
             return Feature;
         }
 
@@ -270,13 +275,21 @@ namespace WizardArchetype
             const string k = "WizardArchetype.AbilityY";
             WizardArchetypeBlueprints.RegisterText(k + ".Name", "施法参数交换");
             WizardArchetypeBlueprints.RegisterText(k + ".Desc",
-                "迅捷动作，仅战斗中可用。在施法者等级（CL）与法术 DC 之间交换。\n" +
-                "每次 +1 层：CL +1 / DC -2；每次 -1 层：CL -1 / DC +2。\n" +
-                "同方向最多 2 层，两个方向互斥。修正持续至战斗结束。\n" +
-                "「取消」为自由动作，清除全部层数。");
-            WizardArchetypeBlueprints.RegisterText(k + ".ResourceName", "施法参数交换次数");
+                "<b>迅捷动作</b>，仅可在战斗中使用。在施法者等级（CL）与法术 DC 之间进行取舍。\n" +
+                "<b>两个方向</b>\n" +
+                "· 每 +1 层：CL +1，法术 DC -2\n" +
+                "· 每 -1 层：CL -1，法术 DC +2\n" +
+                "<b>限制</b>\n" +
+                "· 同方向最多叠加 2 层（即 ±2）\n" +
+                "· 两个方向互斥：已有正向层数时无法选择反向，需先「取消」\n" +
+                "· 修正只作用于法师法术书的法术，并持续至战斗结束\n" +
+                "<b>取消</b>\n" +
+                "以<b>自由动作</b>清除全部层数，同样消耗 1 次使用次数。\n" +
+                "<b>使用次数</b>\n" +
+                "每次休息后恢复：⌈智力调整值 ÷ 2⌉ + ⌈法师等级 ÷ 2⌉。");
+            WizardArchetypeBlueprints.RegisterText(k + ".ResourceName", "施法参数交换");
             WizardArchetypeBlueprints.RegisterText(k + ".ResourceDesc",
-                "每次休息后恢复：ceil(智力调整值 / 2) + ceil(法师等级 / 2)。");
+                "每次休息后恢复：⌈智力调整值 ÷ 2⌉ + ⌈法师等级 ÷ 2⌉。");
         }
     }
 }

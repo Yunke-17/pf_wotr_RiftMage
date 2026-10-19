@@ -49,8 +49,11 @@ namespace WizardArchetype
 
             WizardArchetypeBlueprints.RegisterText(KeyName, "特殊纠缠");
             WizardArchetypeBlueprints.RegisterText(KeyDesc,
-                "施放法师法术时必须通过额外的专注检定。\n" +
-                "不会降低移动速度，也不会被「行动自如」免疫或解除。");
+                "施放法师法术时必须额外通过一次专注检定，DC = 10 + ⌈法师等级 ÷ 2⌉ + 环位 × 2。\n" +
+                "· 检定成功：法术正常施放，并立即解除该状态\n" +
+                "· 检定失败：法术失效，并受到 1d2 点体质伤害（同一轮内最多结算一次）\n" +
+                "· 体质低于 3 时无法施放法师法术\n" +
+                "<b>该状态不会降低移动速度，也不会被「行动自如」免疫或解除。</b>");
 
             var concentration = new SpecialEntangleConcentration
             {
@@ -99,6 +102,9 @@ namespace WizardArchetype
 
             cache.AddCachedBlueprint(BlueprintGuid.Parse(GuidSpecialEntangled), buff);
             SpecialEntangled = buff;
+
+            // 图标与特效（同属精神/束缚类负面状态）
+            IconsAndFx.ApplySpecialStatus(cache, buff);
 
             Main.Log?.Log("WizardArchetype: 已创建「特殊纠缠」蓝图");
         }

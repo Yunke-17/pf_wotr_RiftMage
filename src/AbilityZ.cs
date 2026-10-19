@@ -88,7 +88,10 @@ namespace WizardArchetype
             Ability = CreateAbility(cache);
             Feature = CreateFeature(cache);
 
-            Main.Log?.Log("WizardArchetype: 能力Z 蓝图已构建（原版力竭 30s + 原版疲劳 90s）");
+            // 图标（用户 2026-10-20 新增需求）
+            IconsAndFx.ApplyAbilityZ(cache, Feature, Ability);
+
+            Main.Log?.Log("WizardArchetype: 能力Z 蓝图已构建（原版力竭 30s + 原版疲劳 90s，含图标）");
             return Feature;
         }
 
@@ -287,13 +290,20 @@ namespace WizardArchetype
             const string k = "WizardArchetype.AbilityZ";
             WizardArchetypeBlueprints.RegisterText(k + ".Name", "透支充能");
             WizardArchetypeBlueprints.RegisterText(k + ".Desc",
-                "整轮动作，仅战斗中可用。\n" +
-                "恢复「强化施法」1 次可用次数（不超过 1 次）。\n" +
-                "同时获得 30 秒力竭与 60 秒疲劳。\n" +
-                "仅在强化施法已无充能且无未到期强化状态时可用。");
-            WizardArchetypeBlueprints.RegisterText(k + ".ResourceName", "透支充能次数");
+                "<b>整轮动作</b>。燃烧自身状态，夺回一次强化施法的机会。\n" +
+                "<b>效果</b>\n" +
+                "· 使「强化施法」恢复 1 次可用次数（上限为 1）\n" +
+                "· 获得 <b>30 秒力竭</b> 与 <b>90 秒疲劳</b>，两者同时开始计时\n" +
+                "  （力竭 30 秒结束后，疲劳仍会持续 60 秒）\n" +
+                "· 这两种状态不会因战斗结束而提前清除\n" +
+                "<b>使用条件</b>\n" +
+                "· 仅当「强化施法」已无可用充能时才能使用\n" +
+                "<b>使用次数</b>\n" +
+                "基础施法者等级 7 级起获得：7–11 级 1 次，12–16 级 2 次，17 级及以上 3 次。\n" +
+                "每次休息后恢复。");
+            WizardArchetypeBlueprints.RegisterText(k + ".ResourceName", "透支充能");
             WizardArchetypeBlueprints.RegisterText(k + ".ResourceDesc",
-                "基础 CL 7 起获得：7-11 → 1 次，12-16 → 2 次，17+ → 3 次。每次休息恢复。");
+                "基础施法者等级 7–11 级：1 次；12–16 级：2 次；17 级及以上：3 次。每次休息后恢复。");
         }
     }
 }
