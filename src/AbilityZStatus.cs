@@ -1,107 +1,66 @@
 using System;
-using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.JsonSystem;
-using Kingmaker.Designers.Mechanics.Buffs;
-using Kingmaker.ElementsSystem;
-using Kingmaker.EntitySystem.Stats;
-using Kingmaker.Localization;
-using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
-using Kingmaker.UnitLogic.Mechanics;
-using Kingmaker.UnitLogic.Mechanics.Actions;
-using Kingmaker.UnitLogic.Mechanics.Components;
 
 namespace WizardArchetype
 {
     /// <summary>
-    /// 能力 Z 的状态定义（用户 2026-10-20 最终版）。
+    /// 能力 Z 使用的状态（用户 2026-10-20 最终定稿）。
     ///
-    ///   使用 Z → 力竭 30 秒 + 疲劳 90 秒，**同时开始计时**
-    ///   力竭 30s 先消失，疲劳继续到 90s
+    /// ========== 两个状态都用原版 ==========
     ///
-    /// ========== 为什么力竭要自建 ==========
+    ///   力竭 Exhausted  (46d1b9cc3d0fd36469a471b047d773a2)
+    ///       条件：Slowed + Exhausted
+    ///       效果：两个 AddGenericStatBonus（攻击/豁免/技能 -2、移速降低等）
+    ///   疲劳 Fatigued   (e6f2fc5d73d88064583cb828801212f4)
+    ///       条件：Fatigued
     ///
-    /// 原版 Exhausted.jbp 除了 AddCondition{Slowed/Exhausted} 外还挂了两个
-    /// AddGenericStatBonus（属性惩罚）。自建时保留同样的条件，
-    /// 但**不再挂任何后续动作** —— 疲劳由 AbilityZAction 直接施加 90 秒，
-    /// 避免「力竭结束时再补一次疲劳」造成重复叠加或时长错乱。
+    /// 之前曾自建「透支力竭」，但自建版缺了原版的两个属性惩罚，
+    /// 效果与原版力竭不一致。用户要求直接用原版，故删除自建蓝图。
     ///
-    /// 疲劳直接复用原版 Fatigued（无联动动作，套用安全）。
+    /// ========== 时长为什么是 30s + 90s ==========
+    ///
+    /// 用户设计意图：
+    ///   力竭 30s 与疲劳 90s **同时开始计时**。
+    ///   30 秒后力竭结束，疲劳还剩 60 秒继续生效。
+    ///   ⇒ 表现为「力竭 30s，随后再疲劳 60s」，但只施加一次、无二次触发。
+    ///
+    ///   90 = 30（与力竭重叠）+ 60（力竭结束后的纯疲劳）
+    ///
+    /// 这样不需要任何「力竭结束时再补疲劳」的联动逻辑，
+    /// 也就不会出现疲劳被重复叠加的问题。
     /// </summary>
     internal static class AbilityZStatus
     {
-        internal const string GuidExhaustedBuff = "b1000000000000000000000000000043";
+        internal const string VanillaExhausted = "46d1b9cc3d0fd36469a471b047d773a2";
+        internal const string VanillaFatigued = "e6f2fc5d73d88064583cb828801212f4";
 
-        private const string VanillaFatigued = "e6f2fc5d73d88064583cb828801212f4";
+        /// <summary>力竭持续 30 秒。</summary>
+        internal const float ExhaustedSeconds = 30f;
+
+        /// <summary>疲劳持续 90 秒（30 秒与力竭重叠 + 60 秒纯疲劳）。</summary>
+        internal const float FatiguedSeconds = 90f;
 
         internal static BlueprintBuff ExhaustedBuff { get; private set; }
         internal static BlueprintBuff FatiguedBuff { get; private set; }
 
         internal static void Create(BlueprintsCache cache)
         {
-            // 疲劳：直接复用原版
+            ExhaustedBuff = cache.Load(BlueprintGuid.Parse(VanillaExhausted)) as BlueprintBuff;
+            if (ExhaustedBuff == null)
+            {
+                Main.Log?.Error("[能力Z] 原版 Exhausted 加载失败（力竭效果将缺失）");
+            }
+
             FatiguedBuff = cache.Load(BlueprintGuid.Parse(VanillaFatigued)) as BlueprintBuff;
             if (FatiguedBuff == null)
             {
-                Main.Log?.Error("[能力Z] 原版 Fatigued 加载失败");
+                Main.Log?.Error("[能力Z] 原版 Fatigued 加载失败（疲劳效果将缺失）");
             }
 
-            ExhaustedBuff = CreateExhausted(cache);
-        }
-
-        private static BlueprintBuff CreateExhausted(BlueprintsCache cache)
-        {
-            const string root = "WizardArchetype.AbilityZ.";
-            WizardArchetypeBlueprints.RegisterText(root + "ZExhausted.Name", "透支力竭");
-            WizardArchetypeBlueprints.RegisterText(root + "ZExhausted.Desc",
-                "力竭：攻击检定、豁免检定、技能检定 -2，移动速度降低。\n" +
-                "由「透支充能」造成，持续 30 秒。");
-
-            // 条件效果：与原版 Exhausted 一致（Slowed + Exhausted）
-            var slowed = new BuffStatusCondition
-            {
-                name = "$BuffStatusCondition$ZExhausted_Slowed",
-                Condition = UnitCondition.Slowed,
-                SaveEachRound = false,
-                SaveType = SavingThrowType.Unknown,
-            };
-
-            var exhausted = new BuffStatusCondition
-            {
-                name = "$BuffStatusCondition$ZExhausted_Exhausted",
-                Condition = UnitCondition.Exhausted,
-                SaveEachRound = false,
-                SaveType = SavingThrowType.Unknown,
-            };
-
-            // ★ 不再挂 AddFactContextActions。
-            //   疲劳由 AbilityZAction 直接施加 90 秒（与力竭同时开始计时），
-            //   这里若再加一次「力竭结束时施加疲劳」，会导致疲劳被重复叠加、
-            //   总时长变成 90+90，与需求不符。
-
-            var buff = new BlueprintBuff
-            {
-                name = "WizardArchetype_AbilityZ_Exhausted",
-                AssetGuid = BlueprintGuid.Parse(GuidExhaustedBuff),
-                Stacking = StackingType.Replace,
-                Frequency = DurationRate.Rounds,
-                Ranks = 0,
-                IsClassFeature = false,
-                ComponentsArray = new BlueprintComponent[] { slowed, exhausted },
-                FxOnRemove = new Kingmaker.ResourceLinks.PrefabLink(),
-            };
-
-            ReflectionFields.Set(buff, "m_DisplayName",
-                new LocalizedString { Key = root + "ZExhausted.Name" });
-            ReflectionFields.Set(buff, "m_Description",
-                new LocalizedString { Key = root + "ZExhausted.Desc" });
-
-            foreach (var c in buff.ComponentsArray)
-                if (c != null) c.OwnerBlueprint = buff;
-
-            cache.AddCachedBlueprint(BlueprintGuid.Parse(GuidExhaustedBuff), buff);
-            return buff;
+            Main.Log?.Log("[能力Z] 状态：原版力竭 " + ExhaustedSeconds +
+                          "s + 原版疲劳 " + FatiguedSeconds + "s（同时计时）");
         }
     }
 }

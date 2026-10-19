@@ -60,24 +60,35 @@ namespace WizardArchetype
         internal static BlueprintAbilityResource Resource { get; private set; }
         internal static BlueprintAbility Ability { get; private set; }
 
-        /// <summary>力竭（30s，结束后接疲劳）—— 见 AbilityZStatus。</summary>
+        /// <summary>
+        /// 力竭（30s）—— **直接用原版** Exhausted（用户 2026-10-20 最终定稿）。
+        /// 原版带 Slowed + Exhausted 条件以及两个 AddGenericStatBonus 属性惩罚。
+        /// </summary>
         internal static BlueprintBuff ExhaustedBuff { get { return AbilityZStatus.ExhaustedBuff; } }
 
-        /// <summary>疲劳（60s）—— 直接复用原版。</summary>
+        /// <summary>
+        /// 疲劳（90s）—— **直接用原版** Fatigued。
+        ///
+        /// 为什么是 90 秒而不是 60 秒（用户解释）：
+        ///   力竭 30s 与疲劳 90s 同时开始计时，
+        ///   30s 后力竭消失时疲劳还剩 60s，
+        ///   于是表现为「力竭 30s 结束后，再陷入 60s 疲劳」。
+        ///   ⇒ 90 = 30（与力竭重叠）+ 60（力竭结束后的纯疲劳）
+        /// </summary>
         internal static BlueprintBuff FatiguedBuff { get { return AbilityZStatus.FatiguedBuff; } }
 
         internal static BlueprintFeature Create(BlueprintsCache cache)
         {
             CreateText();
 
-            // 状态链：力竭 30s → 结束后疲劳 60s（用户 2026-10-20 修正为串行）
+            // 状态：原版力竭 + 原版疲劳（时长由 AbilityZAction 按 30s / 90s 施加）
             AbilityZStatus.Create(cache);
 
             Resource = CreateResource(cache);
             Ability = CreateAbility(cache);
             Feature = CreateFeature(cache);
 
-            Main.Log?.Log("WizardArchetype: 能力Z 蓝图已构建（套用原版力竭/疲劳）");
+            Main.Log?.Log("WizardArchetype: 能力Z 蓝图已构建（原版力竭 30s + 原版疲劳 90s）");
             return Feature;
         }
 
