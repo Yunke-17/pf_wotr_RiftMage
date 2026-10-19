@@ -82,32 +82,41 @@ namespace WizardArchetype
         }
 
         /// <summary>
-        /// 施加力竭 30 秒（用户 2026-10-20 修正为**串行**）：
-        ///   力竭 30s → 结束后（由 Buff 的 Deactivated 动作）接 60s 疲劳
+        /// 施加力竭 30 秒 + 疲劳 90 秒（用户 2026-10-20 最终版：**同时开始计时**）。
         ///
-        /// 所以这里**只施加力竭**，疲劳由 AbilityZStatus 里那个 Buff 的
-        /// AddFactContextActions.Deactivated 自动接上。
+        /// 历史：中间一度改成「串行」（力竭结束后才接疲劳），
+        /// 用户随后改回同时计时，并把疲劳时长从 60 秒调整为 90 秒。
+        /// 所以这里两个状态都直接施加，时长各自独立计算：
+        ///   力竭 30s → 先消失
+        ///   疲劳 90s → 继续存在 60 秒
+        ///
+        /// 力竭仍用自建的「透支力竭」（AbilityZStatus），
+        /// 它的 Deactivated 里**不再**施加疲劳（避免与这里的 90 秒重复叠加）。
         /// </summary>
         private static void ApplyConditions(UnitEntityData unit)
         {
             try
             {
                 var exhausted = AbilityZ.ExhaustedBuff;
-                if (exhausted == null)
+                var fatigued = AbilityZ.FatiguedBuff;
+
+                if (exhausted != null)
                 {
-                    Main.Log?.Error("[能力Z] 力竭状态缺失，效果未施加");
-                    return;
+                    // 秒级时长：避免轮次时长在战斗结束时被清掉
+                    unit.Descriptor.Buffs.AddBuff(exhausted, unit, TimeSpan.FromSeconds(30));
                 }
 
-                // 秒级时长：避免轮次时长在战斗结束时被清掉
-                unit.Descriptor.Buffs.AddBuff(exhausted, unit, TimeSpan.FromSeconds(30));
+                if (fatigued != null)
+                {
+                    unit.Descriptor.Buffs.AddBuff(fatigued, unit, TimeSpan.FromSeconds(90));
+                }
 
-                Main.Log?.Log("[能力Z] 获得 30 秒力竭（结束后自动转 60 秒疲劳）");
+                Main.Log?.Log("[能力Z] 获得 30 秒力竭 + 90 秒疲劳（同时计时）");
                 AbilityXScope.AcceptanceHook("X.ZConditions", true);
             }
             catch (Exception e)
             {
-                Main.Log?.Warning("[能力Z] 施加力竭状态失败：" + e.Message);
+                Main.Log?.Warning("[能力Z] 施加状态失败：" + e.Message);
             }
         }
     }

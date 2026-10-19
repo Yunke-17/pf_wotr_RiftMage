@@ -15,32 +15,23 @@ using Kingmaker.UnitLogic.Mechanics.Components;
 namespace WizardArchetype
 {
     /// <summary>
-    /// 能力 Z 的状态链（用户 2026-10-20 修正）：
+    /// 能力 Z 的状态定义（用户 2026-10-20 最终版）。
     ///
-    ///   使用 Z → 力竭 30 秒 → **力竭结束后**再疲劳 60 秒
+    ///   使用 Z → 力竭 30 秒 + 疲劳 90 秒，**同时开始计时**
+    ///   力竭 30s 先消失，疲劳继续到 90s
     ///
-    /// ========== 为什么不能直接用原版 Exhausted ==========
+    /// ========== 为什么力竭要自建 ==========
     ///
-    /// 原版 Exhausted.jbp 只挂 AddCondition{Slowed/Exhausted}，
-    /// 没有任何「结束后接疲劳」的动作。
-    /// 若直接改原版蓝图，会影响所有原版来源（狂暴、法术等）——属于暗改。
+    /// 原版 Exhausted.jbp 除了 AddCondition{Slowed/Exhausted} 外还挂了两个
+    /// AddGenericStatBonus（属性惩罚）。自建时保留同样的条件，
+    /// 但**不再挂任何后续动作** —— 疲劳由 AbilityZAction 直接施加 90 秒，
+    /// 避免「力竭结束时再补一次疲劳」造成重复叠加或时长错乱。
     ///
-    /// 因此自建一个「透支力竭」Buff：
-    ///   - 条件效果与原版力竭一致（Slowed + Exhausted，等价于原版两个 AddCondition）
-    ///   - 额外挂 AddFactContextActions{Deactivated: 施加 60 秒疲劳}
-    ///     ⇒ 力竭到期/被移除时，自动接上疲劳
-    ///
-    /// 疲劳直接复用原版 Fatigued（它没有联动动作，套用安全）。
-    ///
-    /// ========== 为什么不用计时器轮询 ==========
-    ///
-    /// AddFactContextActions.OnDeactivate（:44-56）在 Fact 失效时**必然**执行，
-    /// 覆盖「自然到期」和「被驱散/提前移除」两种情况，比自建倒计时可靠。
+    /// 疲劳直接复用原版 Fatigued（无联动动作，套用安全）。
     /// </summary>
     internal static class AbilityZStatus
     {
         internal const string GuidExhaustedBuff = "b1000000000000000000000000000043";
-        internal const string GuidFatiguedBuff = "b1000000000000000000000000000044";
 
         private const string VanillaFatigued = "e6f2fc5d73d88064583cb828801212f4";
 
@@ -65,7 +56,7 @@ namespace WizardArchetype
             WizardArchetypeBlueprints.RegisterText(root + "ZExhausted.Name", "透支力竭");
             WizardArchetypeBlueprints.RegisterText(root + "ZExhausted.Desc",
                 "力竭：攻击检定、豁免检定、技能检定 -2，移动速度降低。\n" +
-                "由「透支充能」造成，持续 30 秒；结束后转入 60 秒疲劳。");
+                "由「透支充能」造成，持续 30 秒。");
 
             // 条件效果：与原版 Exhausted 一致（Slowed + Exhausted）
             var slowed = new BuffStatusCondition
@@ -84,40 +75,10 @@ namespace WizardArchetype
                 SaveType = SavingThrowType.Unknown,
             };
 
-            // 力竭结束后 → 施加 60 秒疲劳
-            var applyFatigue = new ContextActionApplyBuff
-            {
-                name = "$ContextActionApplyBuff$ZExhausted_Fatigue",
-                Permanent = false,
-                UseDurationSeconds = true,      // 用秒级，避免轮次时长被战斗结束清掉
-                DurationSeconds = 60f,          // 注意：这是 float 字段（ContextActionApplyBuff.cs:150）
-                DurationValue = new ContextDurationValue
-                {
-                    Rate = DurationRate.Rounds,
-                    DiceType = Kingmaker.RuleSystem.DiceType.Zero,
-                    DiceCountValue = new ContextValue
-                    {
-                        ValueType = ContextValueType.Simple,
-                        Value = 0,
-                    },
-                    BonusValue = new ContextValue
-                    {
-                        ValueType = ContextValueType.Simple,
-                        Value = 0,
-                    },
-                },
-            };
-            ReflectionFields.Set(applyFatigue, "m_Buff",
-                BlueprintReference<BlueprintBuff>.CreateTyped<BlueprintBuffReference>(FatiguedBuff));
-
-            var contextActions = new AddFactContextActions
-            {
-                name = "$AddFactContextActions$ZExhausted",
-                Activated = new ActionList { Actions = new GameAction[0] },
-                Deactivated = new ActionList { Actions = new GameAction[] { applyFatigue } },
-                NewRound = new ActionList { Actions = new GameAction[0] },
-                Dispose = new ActionList { Actions = new GameAction[0] },
-            };
+            // ★ 不再挂 AddFactContextActions。
+            //   疲劳由 AbilityZAction 直接施加 90 秒（与力竭同时开始计时），
+            //   这里若再加一次「力竭结束时施加疲劳」，会导致疲劳被重复叠加、
+            //   总时长变成 90+90，与需求不符。
 
             var buff = new BlueprintBuff
             {
@@ -127,7 +88,7 @@ namespace WizardArchetype
                 Frequency = DurationRate.Rounds,
                 Ranks = 0,
                 IsClassFeature = false,
-                ComponentsArray = new BlueprintComponent[] { slowed, exhausted, contextActions },
+                ComponentsArray = new BlueprintComponent[] { slowed, exhausted },
                 FxOnRemove = new Kingmaker.ResourceLinks.PrefabLink(),
             };
 
