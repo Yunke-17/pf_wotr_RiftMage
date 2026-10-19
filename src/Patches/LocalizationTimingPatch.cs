@@ -22,6 +22,10 @@ namespace WizardArchetype.Patches
         {
             if (!Main.Enabled) return;
             WizardArchetypeBlueprints.FlushText();
+
+            // 术语必须在文本 flush 之后注入 —— GlossaryEntry 的 Name/Description
+            // 是 LocalizedString，要等本地化包就绪才能解析出文字。
+            Glossary.Inject();
         }
     }
 }
