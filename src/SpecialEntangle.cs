@@ -49,12 +49,16 @@ namespace WizardArchetype
 
             WizardArchetypeBlueprints.RegisterText(KeyName, "时序专注");
             WizardArchetypeBlueprints.RegisterText(KeyDesc,
-                "在陷入此状态期间施放法师法术，必须通过一次专注检定：\n" +
-                "<b>DC = 10 + ⌈法师等级 ÷ 2⌉ + 法术环位 × 2</b>\n" +
-                "· <b>检定成功</b>：法术正常施放，且该状态立即解除\n" +
-                "· <b>检定失败</b>：法术失效，你受到 1d2 点体质属性减损（同一轮内最多结算一次）\n" +
-                "· 若当前体质值低于 3，在状态持续期间无法施放任何法师法术\n" +
-                "<b>该状态不会降低移动速度，也无法被《行动自如》或类似效果预防与解除。</b>");
+                "现实收紧了对空隙法师法力回路的容许。" +
+                "在此期间施放法师" + Glossary.Link(Glossary.KSpell, "法术") + "前，" +
+                "必须先通过一次" + Glossary.Link(Glossary.KConcentration, "专注检定") + "，其" +
+                Glossary.Link(Glossary.KDC, "难度等级（DC）") + "等于 10 + ⌈" +
+                Glossary.Link(Glossary.KWizardLevel, "法师等级") + " ÷ 2⌉ + 法术环位 × 2。" +
+                "检定成功时，法术正常施放，且该状态立即解除；" +
+                "检定失败时，法术失效，法师受到 1d2 点" +
+                Glossary.Link(Glossary.KAbilityScores, "属性值") + "减损（同一轮内最多结算一次），" +
+                "若其体质降至 3 以下，则在此期间无法继续施放任何法师法术。" +
+                "该状态不会降低移动速度，也无法被《行动自如》或类似效果预防与解除。");
 
             var concentration = new SpecialEntangleConcentration
             {

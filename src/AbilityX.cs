@@ -377,27 +377,32 @@ namespace WizardArchetype
             WizardArchetypeBlueprints.RegisterText("WizardArchetype." + KeyBase + ".Name",
                 "空隙湮灭");
             WizardArchetypeBlueprints.RegisterText("WizardArchetype." + KeyBase + ".Desc",
-                "空隙法师能够短暂撕开一条现实缝隙。\n" +
-                "使用<b>自由动作</b>激活后，法师在此后 3 轮内施放的下一个法师法术将获得强化。\n" +
-                "<b>强化效果</b>（按基础施法者等级分档）\n" +
-                "· 伤害骰面提升：1–4 级 +2、5–9 级 +4、10 级及以上 +6\n" +
-                "· 敌方对该法术的豁免检定掷 2/3/4 次并取最低值\n" +
-                "· 该法术自动通过目标的法术抗力检定\n" +
-                "· 该法术可突破以法术描述符判定的魔法免疫（如免疫恐惧、免疫火焰）\n" +
-                "<b>代价</b>\n" +
-                "法术施放完成的瞬间，法师自身立即陷入持续 1 轮【时序反冲】。\n" +
-                "<b>合格法术</b>\n" +
-                "必须是来自法师法术书的非戏法法术。其他法术书中的法术不会触发，也不会消耗该状态。\n" +
-                "<b>使用次数</b>\n" +
-                "每次休息后恢复 1 次。若 3 轮内未施放合格法术，状态消失且次数不返还。");
+                "空隙法师能够短暂撕开一条现实缝隙，令因果在其面前失效。" +
+                "以一个" + Glossary.Link(Glossary.KFreeAction, "自由动作") +
+                "激活后，法师在此后 3 轮内施放的下一个" +
+                Glossary.Link(Glossary.KSpell, "法术") + "将获得强化。\n" +
+                "被强化的" + Glossary.Link(Glossary.KSpell, "法术") + "会根据施法者的" +
+                Glossary.Link(Glossary.KCasterLevel, "施法者等级") + "获得不同程度的增益：" +
+                "伤害骰的骰面提高 2（5 级起为 4，10 级起为 6）；" +
+                "敌方针对该法术的" + Glossary.Link(Glossary.KSavingThrow, "豁免检定") +
+                "需要掷 2 次并取较低结果（5 级起为 3 次，10 级起为 4 次）；" +
+                "该法术还会自动克服目标的" + Glossary.Link(Glossary.KSpellResistance, "法术抗力") +
+                "，并可突破以描述符判定的魔法免疫。\n" +
+                "只有当施放的是来自法师法术书的非戏法法术时，强化才会生效。" +
+                "若 3 轮内未施放合格法术，状态会消失，且本次使用次数不会返还。\n" +
+                "作为代价，" + Glossary.Link(Glossary.KSpell, "法术") +
+                "施放完成的瞬间，法师自身会立即陷入 1 轮" +
+                Glossary.Link(Glossary.KVoidAnnihilation, "时序反冲") + "。\n" +
+                "每次休息后恢复 1 次使用次数。");
             WizardArchetypeBlueprints.RegisterText("WizardArchetype." + KeyBase + ".BuffName",
                 "空隙湮灭");
             WizardArchetypeBlueprints.RegisterText("WizardArchetype." + KeyBase + ".BuffDesc",
-                "现实缝隙已经撕开，你下一次施放的法师法术将被强化：\n" +
-                "· 伤害骰面提升（按基础施法者等级 +2/+4/+6）\n" +
-                "· 敌方豁免检定多次取最低值（2/3/4 次）\n" +
-                "· 自动通过法术抗力检定，并突破描述符类魔法免疫\n" +
-                "强化完成后，你会立即陷入 1 轮【时序反冲】。");
+                "现实缝隙已经撕开。你下一次施放的法师法术会获得强化：" +
+                "伤害骰面提高，" + Glossary.Link(Glossary.KSavingThrow, "豁免检定") +
+                "多次取低，自动克服" + Glossary.Link(Glossary.KSpellResistance, "法术抗力") +
+                "，并可突破描述符类免疫。" +
+                "强化完成后，你会立即陷入 1 轮" +
+                Glossary.Link(Glossary.KTimeRecoil, "时序反冲") + "。");
             WizardArchetypeBlueprints.RegisterText("WizardArchetype." + KeyBase + ".ResourceName",
                 "空隙湮灭");
             WizardArchetypeBlueprints.RegisterText("WizardArchetype." + KeyBase + ".ResourceDesc",

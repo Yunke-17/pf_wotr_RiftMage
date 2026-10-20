@@ -280,24 +280,26 @@ namespace WizardArchetype
             const string k = "WizardArchetype.AbilityY";
             WizardArchetypeBlueprints.RegisterText(k + ".Name", "空隙调谐");
             WizardArchetypeBlueprints.RegisterText(k + ".Desc",
-                "空隙法师可在战斗中拨动自身的法力相位。\n" +
-                "使用<b>迅捷动作</b>选择以下一种状态激活，效果持续至战斗结束：\n" +
-                "· <b>【致密收束】</b>：" + Glossary.Link(Glossary.KDC, "法术 DC") +
-                " +2，但" + Glossary.Link(Glossary.KCasterLevel, "施法者等级") + " -1\n" +
-                "· <b>【裂隙穿透】</b>：" + Glossary.Link(Glossary.KCasterLevel, "施法者等级") +
-                " +1，但" + Glossary.Link(Glossary.KDC, "法术 DC") + " -2\n" +
-                "<b>限制</b>\n" +
-                "· 同一状态最高叠加 2 层\n" +
-                "· 当应用其中一种状态时，另一种状态暂时不可用\n" +
-                "· 仅作用于法师法术书的法术\n" +
-                "<b>取消</b>\n" +
-                "战斗中可消耗<b>自由动作</b>并扣除 1 次使用次数，提前取消【致密收束】或【裂隙穿透】的效果。\n" +
-                "<b>使用次数</b>\n" +
-                "每次休息后恢复：⌈" + Glossary.Link(Glossary.KIntMod, "智力调整值") +
-                " ÷ 2⌉ + ⌈" + Glossary.Link(Glossary.KWizardLevel, "法师等级") + " ÷ 2⌉。");
+                "空隙法师可在战斗中拨动自身的法力相位。以一个" +
+                Glossary.Link(Glossary.KSwiftAction, "迅捷动作") +
+                "选择以下一种状态激活，效果持续至战斗结束。\n" +
+                "选择【致密收束】时，其" + Glossary.Link(Glossary.KDC, "难度等级（DC）") +
+                "提高 2 点，但" + Glossary.Link(Glossary.KCasterLevel, "施法者等级") +
+                "降低 1 级；选择【裂隙穿透】时，" +
+                Glossary.Link(Glossary.KCasterLevel, "施法者等级") +
+                "提高 1 级，但" + Glossary.Link(Glossary.KDC, "难度等级（DC）") + "降低 2 点。\n" +
+                "同一种状态最多可叠加 2 层；当其中一种状态生效时，另一种暂时无法选择。" +
+                "该效果只作用于来自法师法术书的" + Glossary.Link(Glossary.KSpell, "法术") + "。\n" +
+                "战斗中，空隙法师还可消耗一个" +
+                Glossary.Link(Glossary.KFreeAction, "自由动作") +
+                "与 1 次使用次数，提前取消【致密收束】或【裂隙穿透】的效果。\n" +
+                "每次休息后，使用次数会恢复至 ⌈" +
+                Glossary.Link(Glossary.KIntMod, "智力调整值") + " ÷ 2⌉ + ⌈" +
+                Glossary.Link(Glossary.KWizardLevel, "法师等级") + " ÷ 2⌉。");
             WizardArchetypeBlueprints.RegisterText(k + ".ResourceName", "空隙调谐");
             WizardArchetypeBlueprints.RegisterText(k + ".ResourceDesc",
-                "每次休息后恢复：⌈智力调整值 ÷ 2⌉ + ⌈法师等级 ÷ 2⌉。");
+                "每次休息后恢复：⌈" + Glossary.Link(Glossary.KIntMod, "智力调整值") +
+                " ÷ 2⌉ + ⌈" + Glossary.Link(Glossary.KWizardLevel, "法师等级") + " ÷ 2⌉。");
         }
     }
 }

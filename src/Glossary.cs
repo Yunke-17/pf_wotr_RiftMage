@@ -46,14 +46,15 @@ namespace WizardArchetype
 
         // ---- 复用原版已有术语（不重复注册，直接引用其 key）----
         //
-        // 原版 GlossaryHolder 里已经有的 key，我们只管用，不覆盖：
-        //   Skills             技能检定
-        //   Initiative         先攻
-        //   Saving_Throw       豁免检定
-        //   Spell_Resistance   法术抗力
-        //   Concentration      专注
-        //   Ability_Scores     属性值（智力/感知等）
-        // 用常量集中管理，便于查错。
+        // 以下 key 均已确认存在于原版 zhCN.json 的实际使用中
+        // （用正则扫描全部 11 万条文本里出现过的 {g|Encyclopedia:xxx}）：
+        //   Caster_Level  施法者等级      Spell_Resistance 法术抗力
+        //   Intelligence  智力            Ability_Scores   属性值
+        //   Class_Level   职业等级        DC               难度等级
+        //   Skills        技能检定        Initiative       先攻
+        //   Concentration 专注            Spell            法术
+        //   Saving_Throw  豁免检定
+        //   Free_Action / Swift_Action / Full_Round_Action  动作类型
 
         /// <summary>原版：技能检定</summary>
         internal const string KSkills = "Skills";
@@ -73,16 +74,39 @@ namespace WizardArchetype
         /// <summary>原版：难度等级（DC）</summary>
         internal const string KDC = "DC";
 
-        /// <summary>自建：施法者等级（原版术语表里没有 CasterLevel 这个 key，已核对 zhCN.json）</summary>
-        internal const string KCasterLevel = "WizGapCasterLevel";
+        /// <summary>原版：施法者等级（注意 key 是 Caster_Level，带下划线）</summary>
+        internal const string KCasterLevel = "Caster_Level";
 
-        /// <summary>自建：法术穿透检定（原版没有精确对应的术语）</summary>
-        internal const string KSpellPenetration = "WizGapSpellPenetration";
+        /// <summary>原版：智力</summary>
+        internal const string KIntelligence = "Intelligence";
 
-        /// <summary>自建：智力调整值</summary>
+        /// <summary>原版：属性值</summary>
+        internal const string KAbilityScores = "Ability_Scores";
+
+        /// <summary>原版：职业等级</summary>
+        internal const string KClassLevel = "Class_Level";
+
+        /// <summary>原版：法术</summary>
+        internal const string KSpell = "Spell";
+
+        /// <summary>原版：自由动作</summary>
+        internal const string KFreeAction = "Free_Action";
+
+        /// <summary>原版：迅捷动作</summary>
+        internal const string KSwiftAction = "Swift_Action";
+
+        /// <summary>原版：整轮动作</summary>
+        internal const string KFullRoundAction = "Full_Round_Action";
+
+        // ---- 以下为原版没有、需要自建的术语 ----
+
+        /// <summary>自建：智力调整值（原版有「智力」，但没有"调整值"这一条）</summary>
         internal const string KIntMod = "WizGapIntMod";
 
-        /// <summary>自建：法师等级</summary>
+        /// <summary>自建：法术穿透检定</summary>
+        internal const string KSpellPenetration = "WizGapSpellPenetration";
+
+        /// <summary>自建：法师等级（原版只有通用的「职业等级」）</summary>
         internal const string KWizardLevel = "WizGapWizardLevel";
 
         private static bool s_Injected;
@@ -157,39 +181,59 @@ namespace WizardArchetype
 
             WizardArchetypeBlueprints.RegisterText(r + "TimeFocus.Name", "时序专注");
             WizardArchetypeBlueprints.RegisterText(r + "TimeFocus.Desc",
-                "进入战斗时若先攻不低于所有敌人，会陷入此状态，持续 1 轮。\n" +
-                "期间施放法师法术必须通过一次专注检定：\n" +
-                "<b>DC = 10 + ⌈法师等级 ÷ 2⌉ + 法术环位 × 2</b>\n" +
-                "成功：法术正常施放，状态立即解除。\n" +
-                "失败：法术失效，受到 1d2 点体质减损；若体质低于 3，期间无法继续施法。\n" +
-                "该状态无法被《行动自如》解除。");
+                "当空隙法师进入战斗时，若其" + Link(KInitiative, "先攻") +
+                "不低于所有敌人，现实会收紧对他法力回路的容许——他会陷入时序专注，持续 1 轮。" +
+                "在此期间施放法师" + Link(KSpell, "法术") + "时，必须先通过一次" +
+                Link(KConcentration, "专注检定") + "，其" + Link(KDC, "难度等级（DC）") +
+                "等于 10 + ⌈" + Link(KWizardLevel, "法师等级") + " ÷ 2⌉ + 法术环位 × 2。" +
+                "检定成功时，法术正常施放，且该状态立即解除；" +
+                "检定失败时，法术失效，法师受到 1d2 点" +
+                Link(KAbilityScores, "属性值") + "减损；" +
+                "若其体质降至 3 以下，则在此期间无法继续施放任何法师法术。" +
+                "与寻常纠缠不同，该状态不会降低" + Link(KInitiative, "先攻") + "或移动速度，" +
+                "也无法被《行动自如》或类似效果预防与解除。");
 
             WizardArchetypeBlueprints.RegisterText(r + "TimeRecoil.Name", "时序反冲");
             WizardArchetypeBlueprints.RegisterText(r + "TimeRecoil.Desc",
-                "进入战斗时若先攻低于任一敌人，或在【空隙湮灭】强化法术结算后，会陷入此状态。\n" +
-                "如同恍惚：每轮只能进行一个移动动作或一个标准动作，不能进行整轮动作。\n" +
+                "当空隙法师进入战斗时其" + Link(KInitiative, "先攻") + "低于任一敌人，" +
+                "或在其" + Link(KVoidAnnihilation, "空隙湮灭") + "所强化的" +
+                Link(KSpell, "法术") + "完成施放之后，现实会加倍回推，令他陷入时序反冲。" +
+                "其效果如同恍惚：每轮只能进行一个移动动作或一个标准动作，不能进行" +
+                Link(KFullRoundAction, "整轮动作") +
+                "，但可以正常使用" + Link(KFreeAction, "自由动作") + "与" +
+                Link(KSwiftAction, "迅捷动作") + "。" +
                 "该状态无法被《行动自如》或类似效果预防与解除。");
 
             WizardArchetypeBlueprints.RegisterText(r + "VoidAnnihilation.Name", "空隙湮灭");
             WizardArchetypeBlueprints.RegisterText(r + "VoidAnnihilation.Desc",
-                "撕开一条现实缝隙，使你在 3 轮内施放的下一个法师法术破除因果：\n" +
-                "· 伤害骰面 +2/+4/+6（按基础施法者等级）\n" +
-                "· 敌方豁免检定掷 2/3/4 次取最低\n" +
-                "· 自动通过法术抗力检定，并突破描述符类魔法免疫\n" +
-                "代价：法术结算完成后立即陷入 1 轮【时序反冲】。");
+                "空隙法师能够短暂撕开一条现实缝隙，令因果在其面前失效。" +
+                "以一个" + Link(KFreeAction, "自由动作") + "激活后，" +
+                "他在 3 轮内施放的下一个法师" + Link(KSpell, "法术") + "会获得强化：" +
+                "伤害骰的骰面提高 2（5 级起为 4，10 级起为 6）；" +
+                "敌方针对该法术的" + Link(KSavingThrow, "豁免检定") +
+                "需掷 2 次取较低结果（5 级起 3 次，10 级起 4 次）；" +
+                "该法术自动克服目标的" + Link(KSpellResistance, "法术抗力") +
+                "，并可突破以描述符判定的魔法免疫。" +
+                "强化完成后，法师会立即陷入 1 轮" + Link(KTimeRecoil, "时序反冲") + "。");
 
             WizardArchetypeBlueprints.RegisterText(r + "VoidHarmony.Name", "空隙调谐");
             WizardArchetypeBlueprints.RegisterText(r + "VoidHarmony.Desc",
-                "在战斗中拨动法力相位，选择一种状态持续至战斗结束：\n" +
-                "· 【致密收束】：法术 DC +2，施法者等级 -1\n" +
-                "· 【裂隙穿透】：施法者等级 +1，法术 DC -2\n" +
-                "同一状态最多 2 层；两种状态互斥。");
+                "空隙法师可在战斗中拨动自身的法力相位。以一个" +
+                Link(KSwiftAction, "迅捷动作") + "选择一种状态激活，效果持续至战斗结束。" +
+                "选择【致密收束】时，其" + Link(KDC, "难度等级（DC）") + "提高 2 点，但" +
+                Link(KCasterLevel, "施法者等级") + "降低 1 级；" +
+                "选择【裂隙穿透】时，" + Link(KCasterLevel, "施法者等级") + "提高 1 级，但" +
+                Link(KDC, "难度等级（DC）") + "降低 2 点。" +
+                "同一种状态最多叠加 2 层，且两种状态互斥。");
 
             WizardArchetypeBlueprints.RegisterText(r + "VoidOverdraw.Name", "空隙透支");
             WizardArchetypeBlueprints.RegisterText(r + "VoidOverdraw.Desc",
-                "燃烧自身的现实锚点，使【空隙湮灭】恢复 1 次充能。\n" +
-                "代价：获得 30 秒力竭与 90 秒疲劳（同时开始计时）。\n" +
-                "仅当【空隙湮灭】已无充能时可用。");
+                "空隙法师燃烧自身的现实锚点，使" +
+                Link(KVoidAnnihilation, "空隙湮灭") + "恢复 1 次可用充能。" +
+                "作为代价，他会同时获得 30 秒力竭与 90 秒疲劳，两者从一开始便同时计时：" +
+                "30 秒后力竭结束，而疲劳仍会继续 60 秒。" +
+                "只有当" + Link(KVoidAnnihilation, "空隙湮灭") +
+                "已无可用充能时才可使用该能力。");
 
             Add(KArchetype, r + "Archetype.Name", r + "Archetype.Desc");
             Add(KTimeFocus, r + "TimeFocus.Name", r + "TimeFocus.Desc");
@@ -219,16 +263,10 @@ namespace WizardArchetype
                 "不等于角色总等级。兼职时两者会不同。\n" +
                 "本职业多数特性的档位按法师等级而非总等级计算。");
 
-            WizardArchetypeBlueprints.RegisterText(r + "CasterLevel.Name", "施法者等级");
-            WizardArchetypeBlueprints.RegisterText(r + "CasterLevel.Desc",
-                "决定法术强度、可施放环位与诸多法术效果的等级数值。\n" +
-                "通常等于对应职业的等级；神话道途「合书」后会额外提高。\n" +
-                "施法者等级越高，法术的持续时间、伤害骰数量与穿透能力往往越强。");
-
             Add(KSpellPenetration, r + "SpellPenetration.Name", r + "SpellPenetration.Desc");
             Add(KIntMod, r + "IntMod.Name", r + "IntMod.Desc");
             Add(KWizardLevel, r + "WizardLevel.Name", r + "WizardLevel.Desc");
-            Add(KCasterLevel, r + "CasterLevel.Name", r + "CasterLevel.Desc");
+            // 注意：不再注册 CasterLevel —— 现在直接引用原版的 Caster_Level
         }
 
         /// <summary>生成悬停标记：{g|Encyclopedia:Key}文字{/g}</summary>

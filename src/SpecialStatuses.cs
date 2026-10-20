@@ -64,9 +64,12 @@ namespace WizardArchetype
 
             WizardArchetypeBlueprints.RegisterText(KeyName, "时序反冲");
             WizardArchetypeBlueprints.RegisterText(KeyDesc,
-                "如同恍惚：每轮只能进行一个移动动作或一个标准动作，不能进行整轮动作。\n" +
-                "<b>该状态无法被《行动自如》或类似效果预防与解除。</b>\n" +
-                "触发：进入战斗时先攻低于任一敌人，或「空隙湮灭」的强化法术结算完成。");
+                "现实正在加倍回推时空隙法师身上的每一道裂纹。" +
+                "其效果如同恍惚：每轮只能进行一个移动动作或一个标准动作，" +
+                "不能进行" + Glossary.Link(Glossary.KFullRoundAction, "整轮动作") +
+                "，但可以正常使用" + Glossary.Link(Glossary.KFreeAction, "自由动作") +
+                "与" + Glossary.Link(Glossary.KSwiftAction, "迅捷动作") + "。" +
+                "该状态无法被《行动自如》或类似效果预防与解除。");
 
             var condition = new BuffStatusCondition
             {

@@ -133,9 +133,12 @@ namespace WizardArchetype
             };
 
             return NewFeature(cache, GuidSpellPen, "SpellPen",
-                "幸运野兔：法术穿透",
-                "契约魔宠的直觉穿透了现实的褶皱。\n" +
-                "<b>进行" + Glossary.Link(Glossary.KSpellPenetration, "法术穿透检定") + "时获得 +2 加值。</b>",
+                "幸运野兔：裂隙直觉",
+                "契约野兔能嗅到现实褶皱中的空隙。" +
+                "自法师等级 3 级起，空隙法师在进行" +
+                Glossary.Link(Glossary.KSpellPenetration, "法术穿透检定") +
+                "以克服目标" + Glossary.Link(Glossary.KSpellResistance, "法术抗力") +
+                "时，获得 +2 加值。",
                 new BlueprintComponent[] { sp });
         }
 
@@ -176,14 +179,16 @@ namespace WizardArchetype
             all.AddRange(intComps);
 
             string desc =
-                "随着对时序排斥的适应，空隙法师的神经反射被进一步异化。\n" +
-                "<b>先攻检定额外获得【1/2 法师等级】的加值（最多 +10）。</b>\n" +
+                "空隙法师的神经反射被异化，使其总能在现实闭合之前先一步行动。" +
+                "在" + Glossary.Link(Glossary.KInitiative, "先攻检定") +
+                "中获得相当于" + Glossary.Link(Glossary.KWizardLevel, "法师等级") +
+                "一半的加值（最多 +10）。" +
                 (Main.UseCappedInitiative
-                    ? "<b>此外，先攻检定额外获得" +
-                      Glossary.Link(Glossary.KIntMod, "智力调整值") +
-                      "，上限为法师等级。</b>"
-                    : "<b>此外，先攻检定额外获得" +
-                      Glossary.Link(Glossary.KIntMod, "智力调整值") + "。</b>");
+                    ? "此外，还会将" + Glossary.Link(Glossary.KIntMod, "智力调整值") +
+                      "计入" + Glossary.Link(Glossary.KInitiative, "先攻检定") +
+                      "，但该部分加值不会超过法师等级。"
+                    : "此外，还会将" + Glossary.Link(Glossary.KIntMod, "智力调整值") +
+                      "计入" + Glossary.Link(Glossary.KInitiative, "先攻检定") + "。");
 
             // 复用 GuidInitiativeInt 作为合并后的特性 GUID（另一个不再使用）
             return NewFeature(cache, GuidInitiativeInt, "Insight",
@@ -405,12 +410,11 @@ namespace WizardArchetype
 
             return NewFeature(cache, GuidPerceptionInt, "PerceptionInt",
                 "敏锐推演",
-                "空隙法师以严密的因果推演取代了模糊的直觉。\n" +
-                "<b>若智力高于感知，进行" +
-                Glossary.Link(Glossary.KSkills, "技能检定") +
-                "时以" +
-                Glossary.Link(Glossary.KIntMod, "智力调整值") +
-                "替代感知调整值。</b>",
+                "空隙法师以严密的因果推演取代了模糊的直觉。" +
+                "当他进行" + Glossary.Link(Glossary.KSkills, "技能检定") + "时，" +
+                "若其" + Glossary.Link(Glossary.KIntelligence, "智力") + "高于感知，" +
+                "则以" + Glossary.Link(Glossary.KIntMod, "智力调整值") +
+                "替代感知调整值。",
                 comps);
         }
 
@@ -432,9 +436,10 @@ namespace WizardArchetype
 
             return NewFeature(cache, GuidConcentration, "Concentration",
                 "空隙思维",
-                "空隙法师学会了在现实断裂的间隙中稳定自身的法力回路。\n" +
-                "<b>" + Glossary.Link(Glossary.KConcentration, "专注检定") +
-                "获得【法师等级 + 1】的加值，最大为 +6。</b>",
+                "空隙法师学会了在现实断裂的间隙中稳定自身的法力回路。" +
+                "其" + Glossary.Link(Glossary.KConcentration, "专注检定") +
+                "获得相当于" + Glossary.Link(Glossary.KWizardLevel, "法师等级") +
+                "+1 的加值，但该加值最高为 +6。",
                 new BlueprintComponent[] { bonus, rank });
         }
 
@@ -453,9 +458,11 @@ namespace WizardArchetype
             };
 
             return NewFeature(cache, GuidInitiativeDouble, "InitiativeDouble",
-                "幸运野兔：先攻优势",
-                "契约魔宠进一步强化了空隙法师的预判能力。\n" +
-                "<b>先攻检定获得优势：掷两次 d20 并取较高结果。</b>",
+                "幸运野兔：时序预感",
+                "自法师等级 7 级起，契约野兔会在时间真正流逝之前数次颤动双耳。" +
+                "空隙法师进行" + Glossary.Link(Glossary.KInitiative, "先攻检定") +
+                "时获得优势：掷两次 d20 并取较高结果。" +
+                "该优势只作用于先攻检定，不改变其他检定或攻击的掷骰方式。",
                 new BlueprintComponent[] { mod });
         }
 
@@ -479,9 +486,10 @@ namespace WizardArchetype
             // 实际减费由 MetamagicDefaultCostPatch 在 MetamagicHelper.DefaultCost 处完成。
             return NewFeature(cache, GuidQuickenCostNote, "QuickenCostNote",
                 "精通瞬发",
-                "瞬发法术的环位消耗随法师等级降低：" +
-                "13 级起 +3，15 级起 +2，17 级起 +1。" +
-                "<br>该效果可与「偏好超魔：瞬发」叠加，最终消耗最低为 0。",
+                "空隙法师以本能驱动施法，使" + Glossary.Link(Glossary.KSpell, "法术") +
+                "的瞬发成本随" + Glossary.Link(Glossary.KCasterLevel, "施法者等级") + "降低：" +
+                "13 级起为 +3，15 级起为 +2，17 级起为 +1。" +
+                "该效果可与「偏好超魔：瞬发」叠加，最终环位消耗最低为 0。",
                 new BlueprintComponent[0]);
         }
 
