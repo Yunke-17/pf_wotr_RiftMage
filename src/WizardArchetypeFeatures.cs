@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Classes;
+using Kingmaker.Blueprints.Facts;
 using Kingmaker.Blueprints.JsonSystem;
 using Kingmaker.Designers.Mechanics.Facts;
 using Kingmaker.EntitySystem.Properties;
@@ -40,7 +41,8 @@ namespace WizardArchetype
     /// </summary>
     internal static class WizardArchetypeFeatures
     {
-        private const string HareBond = "97dff21a036e80948b07097ad3df2b30";
+        // 2026-10-20：HareBond(97dff21a 原版野兔魔宠) 已不再直接挂载 ——
+        // 改为自建专属魔宠 HareFamiliar，原版蓝图保持不动。
         private const string SkillFocusArcana = "cad1b9175e8c0e64583432a22134d33c";
         private const string QuickenSpellFeat = "ef7ece7bb5bb66a41b256976b27f424e";
 
@@ -48,10 +50,20 @@ namespace WizardArchetype
         internal const string GuidInitiativeInt    = "b1000000000000000000000000000002";
         internal const string GuidPerceptionInt    = "b1000000000000000000000000000003";
         internal const string GuidConcentration    = "b1000000000000000000000000000004";
+
+        /// <summary>3 级「法术穿透 +2」子特性（不再直接出现在特性列表，由合并特性按等级授予）。</summary>
         internal const string GuidInitiativeDouble = "b1000000000000000000000000000005";
+
+        /// <summary>7 级「先攻双骰取高」子特性（同上）。</summary>
         internal const string GuidSpellPen         = "b1000000000000000000000000000006";
         internal const string GuidWizardClassLevelProp = "b1000000000000000000000000000007";
         internal const string GuidQuickenCostNote = "b1000000000000000000000000000008";
+
+        /// <summary>
+        /// 合并后的「幸运野兔」单一特性（2026-10-20）。
+        /// 原来的 1 级原版魔宠 97dff21a / 3 级穿透 / 7 级双骰三条已合并到这里。
+        /// </summary>
+        internal const string GuidHareUnified = "b1000000000000000000000000000009";
 
         internal static List<(int Level, SimpleBlueprint Feature)> BuildAll(BlueprintsCache cache)
         {
@@ -65,7 +77,15 @@ namespace WizardArchetype
                 result.Add((1, abilityX));
             }
 
-            AddOriginal(result, cache, 1, HareBond, "幸运野兔");
+            // 战斗首轮状态「开场时序」—— 1 级。
+            // 规则本身由 SpecialOpeningState 组件执行（2026-10-20 从能力X 迁来），
+            // 本特性同时提供职业面板上的文字说明。
+            var openingTiming = OpeningTimingFeature.Create(cache);
+            if (openingTiming != null)
+            {
+                result.Add((1, openingTiming));
+            }
+
             AddSkillFocusArcana(result, cache);
 
             // 敏锐：职业先攻 + 智力先攻合并为**一个**特性
@@ -105,7 +125,9 @@ namespace WizardArchetype
             // E19：5 级同时展示"瞬发减费"说明特性（纯 UI 标注，不挂任何组件）
             result.Add((5, MakeQuickenCostReducerNote(cache)));
 
-            result.Add((7, MakeInitiativeDoubleRoll(cache)));
+            // ★ 2026-10-20 起：幸运野兔的 3 级 / 7 级效果不再作为独立 LevelEntry 挂载，
+            //   而是由合并后的单一特性通过 AddFeatureOnClassLevel 按职业等级自动授予
+            //   （见 BuildHareChain）。所以这里不再有 MakeInitiativeDoubleRoll 的挂载点。
 
             return result;
         }
@@ -135,10 +157,10 @@ namespace WizardArchetype
             return NewFeature(cache, GuidSpellPen, "SpellPen",
                 "幸运野兔：裂隙直觉",
                 "契约野兔能嗅到现实褶皱中的空隙。" +
-                "自法师等级 3 级起，空隙法师在进行" +
-                Glossary.Link(Glossary.KSpellPenetration, "法术穿透检定") +
-                "以克服目标" + Glossary.Link(Glossary.KSpellResistance, "法术抗力") +
-                "时，获得 +2 加值。",
+                "自职业等级 3 级起，空隙法师在为穿透目标的" +
+                Glossary.Link(Glossary.KSpellResistance, "法术抗力") +
+                "进行" + Glossary.Link(Glossary.KCasterLevel, "施法者等级") +
+                "检定时，获得 +2 加值。",
                 new BlueprintComponent[] { sp });
         }
 
@@ -180,68 +202,174 @@ namespace WizardArchetype
 
             string desc =
                 "空隙法师的神经反射被异化，使其总能在现实闭合之前先一步行动。" +
-                "在" + Glossary.Link(Glossary.KInitiative, "先攻检定") +
-                "中获得相当于" + Glossary.Link(Glossary.KWizardLevel, "法师等级") +
+                "在" + Glossary.Link(Glossary.KInitiative, "先攻") +
+                "检定中获得相当于" + Glossary.Link(Glossary.KClassLevel, "职业等级") +
                 "一半的加值（最多 +10）。" +
                 (Main.UseCappedInitiative
-                    ? "此外，还会将" + Glossary.Link(Glossary.KIntMod, "智力调整值") +
-                      "计入" + Glossary.Link(Glossary.KInitiative, "先攻检定") +
-                      "，但该部分加值不会超过法师等级。"
-                    : "此外，还会将" + Glossary.Link(Glossary.KIntMod, "智力调整值") +
-                      "计入" + Glossary.Link(Glossary.KInitiative, "先攻检定") + "。");
+                    ? "此外，还会将" + Glossary.Link(Glossary.KIntelligence, "智力") +
+                      "调整值计入先攻检定，但该部分加值不会超过职业等级。"
+                    : "此外，还会将" + Glossary.Link(Glossary.KIntelligence, "智力") +
+                      "调整值计入先攻检定。");
 
             // 复用 GuidInitiativeInt 作为合并后的特性 GUID（另一个不再使用）
             return NewFeature(cache, GuidInitiativeInt, "Insight",
                 "敏锐", desc, all.ToArray());
         }
 
-        // ---------- 幸运野兔链：1 级主特性 + 3/7 级进阶 ----------
+        // ---------- 幸运野兔：单一特性 + 按等级自动升阶 ----------
 
         /// <summary>
-        /// 用户 2026-10-20：三个「幸运野兔」特性要在特性列表里显示成一排并连起来，
-        /// 表示它们是同一条连续成长的线。
+        /// 用户 2026-10-20 最终形态：三条幸运野兔**合并为一条**。
         ///
-        /// 实现方式：`BlueprintFeature.IsPrerequisiteFor`（前置链）。
-        ///   幸运野兔(1级) → 幸运野兔：法术穿透(3级) → 幸运野兔：先攻优势(7级)
+        /// ========== 结构 ==========
         ///
-        /// IsPrerequisiteFor 会在角色面板里把后续特性显示为「前置于此」的条目，
-        /// 视觉上就是一条竖排的链（与原版 MythicFeat / 血统进阶的呈现方式一致）。
-        /// 它是纯 UI 字段，不影响实际的特性授予逻辑。
+        ///   幸运野兔（1 级，单一 GUID = GuidHareUnified）
+        ///     ├─ AddFacts → 专属野兔魔宠能力（HareFamiliar，只生成模型，不给数值）
+        ///     ├─ SpellPenetrationBonus +2   ── 3 级起生效
+        ///     ├─ ModifyD20(Initiative, 2取高) ── 7 级起生效
+        ///     └─ 两个 AddFeatureOnClassLevel，把上面两个效果组件
+        ///        按职业等级「挂进 / 摘下」一个子特性
+        ///
+        /// ========== 为什么用 AddFeatureOnClassLevel ==========
+        ///
+        /// 它是原版现成组件（AddFeatureOnClassLevel.cs:92-114），语义正是
+        /// 「职业等级 ≥ Level 时把 Feature 加给 Owner，降下来就摘掉」，
+        /// 并且订阅了 IOwnerGainLevelHandler（:86），升级时会重新判定。
+        ///
+        /// 关键优势：它**支持指定 Archetypes**（:64-70）。
+        /// 原版是共享蓝图，我们给它写 m_Archetypes = 本变体，
+        /// 就只会对空隙法师生效，不会影响其他职业的同名组件。
+        ///
+        /// 这样特性列表里只有「幸运野兔」一条，但 3 级 / 7 级的效果仍会逐级到账。
+        ///
+        /// ========== 为什么不直接挂三个组件 + ContextRankConfig ==========
+        ///
+        /// ContextRankConfig 只能缩放**数值**（加值大小），
+        /// 而「3 级才让法术穿透生效、7 级才让双骰生效」是**开关**语义，
+        /// 加值为 0 时 SpellPenetrationBonus 仍会挂一个 +0 的空修改器，
+        /// 在 UI 上会显示成「法术穿透 +0」，很怪。所以用「子特性挂/摘」更干净。
         /// </summary>
         private static void BuildHareChain(List<(int Level, SimpleBlueprint Feature)> result, BlueprintsCache cache)
         {
-            var baseHare = cache.Load(BlueprintGuid.Parse(HareBond)) as BlueprintFeature;
-            if (baseHare == null)
+            // 专属魔宠（克隆原版，不动原版蓝图）
+            HareFamiliar.Create(cache);
+
+            // 3 级效果：法术穿透 +2（独立子特性，供 AddFeatureOnClassLevel 引用）
+            var spellPen = MakeSpellPenetration(cache) as BlueprintFeature;
+
+            // 7 级效果：先攻掷 2 取高（独立子特性）
+            var doubleRoll = MakeInitiativeDoubleRoll(cache) as BlueprintFeature;
+
+            var comps = new List<BlueprintComponent>();
+
+            // ① 专属魔宠
+            if (HareFamiliar.Ability != null)
             {
-                Main.Log?.Error("[幸运野兔] 原版主特性加载失败，进阶特性将独立显示");
-                result.Add((3, MakeSpellPenetration(cache)));
-                result.Add((7, MakeInitiativeDoubleRoll(cache)));
-                return;
+                var addFamiliar = new AddFacts { name = "$AddFacts$HareUnified_0" };
+                ReflectionFields.Set(addFamiliar, "m_Facts",
+                    new BlueprintUnitFactReference[]
+                    {
+                        BlueprintReference<BlueprintUnitFact>
+                            .CreateTyped<BlueprintUnitFactReference>(HareFamiliar.Ability),
+                    });
+                comps.Add(addFamiliar);
+            }
+            else
+            {
+                Main.Log?.Error("[幸运野兔] 专属魔宠创建失败，合并特性将不含魔宠");
             }
 
-            var tier1 = MakeSpellPenetration(cache) as BlueprintFeature;
-            var tier2 = MakeInitiativeDoubleRoll(cache) as BlueprintFeature;
-
-            // 串链：主 → 3级 → 7级
-            // 注意：原版蓝图是共享对象，改 IsPrerequisiteFor 只影响显示、不影响授予。
-            if (tier1 != null)
+            // ② 3 级起生效：法术穿透
+            if (spellPen != null)
             {
-                baseHare.IsPrerequisiteFor = new List<BlueprintFeatureReference>
-                {
-                    BlueprintReference<BlueprintFeature>.CreateTyped<BlueprintFeatureReference>(tier1),
-                };
+                comps.Add(MakeLevelGate(cache, spellPen, 3, "$AddFeatureOnClassLevel$HarePen"));
+            }
+            else
+            {
+                Main.Log?.Error("[幸运野兔] 法术穿透子特性创建失败");
             }
 
-            if (tier1 != null && tier2 != null)
+            // ③ 7 级起生效：先攻双骰取高
+            if (doubleRoll != null)
             {
-                tier1.IsPrerequisiteFor = new List<BlueprintFeatureReference>
-                {
-                    BlueprintReference<BlueprintFeature>.CreateTyped<BlueprintFeatureReference>(tier2),
-                };
+                comps.Add(MakeLevelGate(cache, doubleRoll, 7, "$AddFeatureOnClassLevel$HareInit"));
+            }
+            else
+            {
+                Main.Log?.Error("[幸运野兔] 先攻双骰子特性创建失败");
             }
 
-            result.Add((3, tier1));
-            result.Add((7, tier2));
+            // ④ 旧存档清理：摘掉合并前遗留的旧特性实例（见 HareLegacyCleanup）
+            comps.Add(new HareLegacyCleanup { name = "$HareLegacyCleanup$HareUnified_4" });
+
+            var unified = NewFeature(cache, GuidHareUnified, "HareUnified",
+                "幸运野兔",
+                BuildHareUnifiedDescription(),
+                comps.ToArray());
+
+            result.Add((1, unified));
+        }
+
+        /// <summary>
+        /// 造一个「职业等级 ≥ level 时授予 feature」的开关组件。
+        ///
+        /// m_Class / m_Feature / m_Archetypes 全是私有字段，只能反射写。
+        /// ★ m_Archetypes 必须填本变体 —— 否则这个组件对「所有拿法师职业的人」生效，
+        ///   普通法师也会在 3 级白得法术穿透 +2。
+        /// </summary>
+        private static AddFeatureOnClassLevel MakeLevelGate(
+            BlueprintsCache cache, BlueprintFeature feature, int level, string componentName)
+        {
+            var gate = new AddFeatureOnClassLevel
+            {
+                name = componentName,
+                Level = level,
+                BeforeThisLevel = false,
+            };
+
+            // m_Class：法师职业
+            ReflectionFields.Set(gate, "m_Class",
+                BlueprintReference<BlueprintCharacterClass>
+                    .CreateTyped<BlueprintCharacterClassReference>(
+                        WizardArchetypeBlueprints.WizardClass));
+
+            // m_Feature：要授予的子特性
+            ReflectionFields.Set(gate, "m_Feature",
+                BlueprintReference<BlueprintFeature>
+                    .CreateTyped<BlueprintFeatureReference>(feature));
+
+            // m_Archetypes：限定本变体（关键）
+            if (WizardArchetypeBlueprints.Archetype != null)
+            {
+                var arr = Array.CreateInstance(typeof(BlueprintArchetypeReference), 1);
+                arr.SetValue(
+                    BlueprintReference<BlueprintArchetype>
+                        .CreateTyped<BlueprintArchetypeReference>(WizardArchetypeBlueprints.Archetype),
+                    0);
+                ReflectionFields.Set(gate, "m_Archetypes", arr);
+            }
+            else
+            {
+                Main.Log?.Error("[幸运野兔] 变体蓝图尚未构建，等级开关无法限定 archetype");
+            }
+
+            return gate;
+        }
+
+        /// <summary>合并特性的描述：一条里说清魔宠 + 三级成长。</summary>
+        private static string BuildHareUnifiedDescription()
+        {
+            // 同一段内同术语只挂首次：先攻 ×1、法术抗力 ×1、施法者等级 ×1
+            return "一只契约野兔从现实缝隙中钻出，成为空隙法师的魔宠。" +
+                   "它本身不提供任何加值，而是作为法师与时间裂隙之间的联系而存在。\n" +
+                   "自职业等级 3 级起，空隙法师在为穿透目标的" +
+                   Glossary.Link(Glossary.KSpellResistance, "法术抗力") +
+                   "进行" + Glossary.Link(Glossary.KCasterLevel, "施法者等级") +
+                   "检定时获得 +2 加值。\n" +
+                   "自职业等级 7 级起，野兔会在时间真正流逝之前数次颤动双耳，" +
+                   "使空隙法师进行" + Glossary.Link(Glossary.KInitiative, "先攻") +
+                   "检定时掷两次 d20 并取较高结果。该优势只作用于先攻检定，" +
+                   "不改变其他检定或攻击的掷骰方式。";
         }
 
         // ---------- （已合并进 MakeInsight，保留此注释便于追溯）----------
@@ -411,10 +539,10 @@ namespace WizardArchetype
             return NewFeature(cache, GuidPerceptionInt, "PerceptionInt",
                 "敏锐推演",
                 "空隙法师以严密的因果推演取代了模糊的直觉。" +
-                "当他进行" + Glossary.Link(Glossary.KSkills, "技能检定") + "时，" +
+                "当他进行" + Glossary.Link(Glossary.KSkills, "技能") +
+                "检定（察觉、学识：自然、学识：宗教）时，" +
                 "若其" + Glossary.Link(Glossary.KIntelligence, "智力") + "高于感知，" +
-                "则以" + Glossary.Link(Glossary.KIntMod, "智力调整值") +
-                "替代感知调整值。",
+                "则以智力调整值替代感知调整值。",
                 comps);
         }
 
@@ -437,8 +565,8 @@ namespace WizardArchetype
             return NewFeature(cache, GuidConcentration, "Concentration",
                 "空隙思维",
                 "空隙法师学会了在现实断裂的间隙中稳定自身的法力回路。" +
-                "其" + Glossary.Link(Glossary.KConcentration, "专注检定") +
-                "获得相当于" + Glossary.Link(Glossary.KWizardLevel, "法师等级") +
+                "其" + Glossary.Link(Glossary.KConcentration, "专注") +
+                "检定获得相当于" + Glossary.Link(Glossary.KClassLevel, "职业等级") +
                 "+1 的加值，但该加值最高为 +6。",
                 new BlueprintComponent[] { bonus, rank });
         }
@@ -459,9 +587,9 @@ namespace WizardArchetype
 
             return NewFeature(cache, GuidInitiativeDouble, "InitiativeDouble",
                 "幸运野兔：时序预感",
-                "自法师等级 7 级起，契约野兔会在时间真正流逝之前数次颤动双耳。" +
-                "空隙法师进行" + Glossary.Link(Glossary.KInitiative, "先攻检定") +
-                "时获得优势：掷两次 d20 并取较高结果。" +
+                "自职业等级 7 级起，契约野兔会在时间真正流逝之前数次颤动双耳。" +
+                "空隙法师进行" + Glossary.Link(Glossary.KInitiative, "先攻") +
+                "检定时获得优势：掷两次 d20 并取较高结果。" +
                 "该优势只作用于先攻检定，不改变其他检定或攻击的掷骰方式。",
                 new BlueprintComponent[] { mod });
         }

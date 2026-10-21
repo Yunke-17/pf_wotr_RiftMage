@@ -62,11 +62,15 @@ namespace WizardArchetype
         {
             if (SpecialStaggered != null) return;
 
-            WizardArchetypeBlueprints.RegisterText(KeyName, "时序反冲");
+            // ★ 显示名 2026-10-20 由「时序反冲」定为「时序恍惚」（用户要求）。
+            //   理由：状态本身挂的就是 UnitCondition.Staggered（恍惚），
+            //   名字直接体现效果，也与术语表条目、开场特性描述用词统一。
+            //   内部类名 / GUID / 本地化 key 均不变（改 key 会让旧存档的文本丢失）。
+            WizardArchetypeBlueprints.RegisterText(KeyName, "时序恍惚");
             WizardArchetypeBlueprints.RegisterText(KeyDesc,
                 "现实正在加倍回推时空隙法师身上的每一道裂纹。" +
-                "其效果如同恍惚：每轮只能进行一个移动动作或一个标准动作，" +
-                "不能进行" + Glossary.Link(Glossary.KFullRoundAction, "整轮动作") +
+                "其效果如同恍惚：每轮只能进行一个移动动作或一个标准动作、" +
+                "移动速度减半，不能进行" + Glossary.Link(Glossary.KFullRoundAction, "整轮动作") +
                 "，但可以正常使用" + Glossary.Link(Glossary.KFreeAction, "自由动作") +
                 "与" + Glossary.Link(Glossary.KSwiftAction, "迅捷动作") + "。" +
                 "该状态无法被《行动自如》或类似效果预防与解除。");
@@ -125,8 +129,7 @@ namespace WizardArchetype
             cache.AddCachedBlueprint(BlueprintGuid.Parse(GuidSpecialStaggered), buff);
             SpecialStaggered = buff;
 
-            // 图标与特效（精神类负面状态 → 复用恐惧术起始特效）
-            IconsAndFx.ApplySpecialStatus(cache, buff);
+            // 图标与光环统一由 Presentation.Apply 装配（2026-10-21）
 
             Main.Log?.Log("WizardArchetype: 已创建「特殊恍惚」蓝图");
         }

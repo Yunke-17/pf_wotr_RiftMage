@@ -43,9 +43,6 @@ namespace WizardArchetype
 
         internal static void Create(BlueprintsCache cache)
         {
-            // 术语文本要先注册（与其它文本同一时机，等 WaitForInit 后 flush）
-            Glossary.CreateText();
-
             RegisterText(KeyName, "空隙法师");
 
             // 变体描述：只写到「极速施法」为止（用户 2026-10-20 要求）。
@@ -106,6 +103,21 @@ namespace WizardArchetype
                 .ToArray();
 
             cache.AddCachedBlueprint(ArchetypeGuid, Archetype);
+
+            // ★ 表现层总装（2026-10-21）：
+            //   所有蓝图都进过 cache 之后，再统一挂图标 / 光环 / 音效。
+            //   放这里而不是各模块内部，是为了让"审美相关配置"只有一份（Presentation.cs）。
+            //
+            //   单独 try/catch：表现层只是"好看/好听"，绝不能因为某个图标 GUID 或音效名
+            //   出错而阻断下面的"挂到法师职业"——那会让整个 MOD 失效。
+            try
+            {
+                Presentation.Apply(cache);
+            }
+            catch (System.Exception e)
+            {
+                Main.Log?.Error("WizardArchetype: 表现层装配失败（不影响规则） - " + e);
+            }
 
             var existing = wizard.Archetypes.Where(a => a != null).ToList();
             if (existing.Any(a => a.AssetGuid == ArchetypeGuid))
@@ -208,13 +220,19 @@ namespace WizardArchetype
                 return;
             }
 
+            // ★ 2026-10-21：文本以 Localization/<语言>.json 为准，
+            //   代码里 RegisterText 传的中文只作为"文件缺失"时的兜底。
+            int fromFile = 0;
             foreach (var kv in s_PendingText)
             {
-                PushText(kv.Key, kv.Value);
+                string text = LocalizationText.Get(kv.Key, kv.Value);
+                if (!string.Equals(text, kv.Value)) fromFile++;
+                PushText(kv.Key, text);
             }
 
             s_TextFlushed = true;
-            Main.Log?.Log($"WizardArchetype: 已注册 {s_PendingText.Count} 条本地化文本");
+            Main.Log?.Info($"WizardArchetype: 已注册 {s_PendingText.Count} 条本地化文本" +
+                           $"（来自语言包 {fromFile} 条，语言包 = {LocalizationText.Source}）");
 
             VerifyText();
         }

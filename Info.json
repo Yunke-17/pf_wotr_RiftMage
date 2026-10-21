@@ -1,10 +1,10 @@
 {
-  "Id": "WizardArchetype",
-  "DisplayName": "Wizard Archetype",
-  "Author": "WizardArchetype",
-  "Version": "0.1.0",
+  "Id": "RiftMage",
+  "DisplayName": "Rift Mage",
+  "Author": "ToisnaLey",
+  "Version": "1.0.1",
   "ManagerVersion": "0.32.4",
   "Requirements": [],
-  "AssemblyName": "WizardArchetype.dll",
+  "AssemblyName": "RiftMage.dll",
   "EntryMethod": "WizardArchetype.Main.Load"
 }

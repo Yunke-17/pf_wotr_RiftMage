@@ -29,6 +29,10 @@ namespace WizardArchetype.Patches
         private static void Postfix(RuleCollectMetamagic __instance, Feature metamagicFeature, int ___m_SpellLevel)
         {
             if (!Main.Enabled || !Main.FixMetamagicLimit) return;
+
+            // 装了独立的「MetamagicFix」MOD 时，这份补丁让位，避免同一次判定被补两次。
+            if (Main.HasExternalMetamagicFix()) return;
+
             if (__instance == null || metamagicFeature == null) return;
 
             var component = metamagicFeature.GetComponent<AddMetamagicFeat>();
@@ -50,6 +54,13 @@ namespace WizardArchetype.Patches
             if ((spell.AvailableMetamagic & metamagic) != metamagic) return;
 
             var caster = spellbook.Owner?.Unit;
+
+            // ★ 2026-10-21：收窄到本 MOD 的变体。
+            //   这条补丁只是修复原版"用孤立成本预判整套超魔"的误拒；
+            //   但对其它职业来说它同样会放宽限制 —— 一个职业 MOD 不应该顺手改别人的规则。
+            //   本变体自己的瞬发减费在 CL < 13 时并不依赖这条补丁，所以收窄没有副作用。
+            if (caster == null || !Main.IsWizardArchetype(caster)) return;
+
             int cost = metamagic.DefaultCost();
             if (caster != null && MetamagicCost.IsFavoriteMetamagic(metamagic, caster))
             {

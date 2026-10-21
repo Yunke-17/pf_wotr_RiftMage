@@ -404,6 +404,9 @@ namespace WizardArchetype
 
         internal static void AcceptanceHook(string field, object value)
         {
+            // 验收埋点属于调试设施：只有调试模式才工作，成品默认完全跳过。
+            if (!Main.DebugLog) return;
+
             try
             {
                 if (!s_ExpectLookupDone)

@@ -51,14 +51,13 @@ namespace WizardArchetype
             WizardArchetypeBlueprints.RegisterText(KeyDesc,
                 "现实收紧了对空隙法师法力回路的容许。" +
                 "在此期间施放法师" + Glossary.Link(Glossary.KSpell, "法术") + "前，" +
-                "必须先通过一次" + Glossary.Link(Glossary.KConcentration, "专注检定") + "，其" +
-                Glossary.Link(Glossary.KDC, "难度等级（DC）") + "等于 10 + ⌈" +
-                Glossary.Link(Glossary.KWizardLevel, "法师等级") + " ÷ 2⌉ + 法术环位 × 2。" +
+                "必须先通过一次" + Glossary.Link(Glossary.KConcentration, "专注") + "检定，其" +
+                Glossary.Link(Glossary.KDC, "DC") + "等于 10 + ⌈" +
+                Glossary.Link(Glossary.KClassLevel, "职业等级") + " / 2⌉ + 法术环位 × 2。" +
                 "检定成功时，法术正常施放，且该状态立即解除；" +
                 "检定失败时，法术失效，法师受到 1d2 点" +
-                Glossary.Link(Glossary.KAbilityScores, "属性值") + "减损（同一轮内最多结算一次），" +
-                "若其体质降至 3 以下，则在此期间无法继续施放任何法师法术。" +
-                "该状态不会降低移动速度，也无法被《行动自如》或类似效果预防与解除。");
+                Glossary.Link(Glossary.KConstitution, "体质") + "伤害（同一轮内最多结算一次），" +
+                "若其体质降至 3 以下，则在此期间无法继续施放任何法师法术。");
 
             var concentration = new SpecialEntangleConcentration
             {
@@ -108,8 +107,7 @@ namespace WizardArchetype
             cache.AddCachedBlueprint(BlueprintGuid.Parse(GuidSpecialEntangled), buff);
             SpecialEntangled = buff;
 
-            // 图标与特效（同属精神/束缚类负面状态）
-            IconsAndFx.ApplySpecialStatus(cache, buff);
+            // 图标与光环统一由 Presentation.Apply 装配（2026-10-21）
 
             Main.Log?.Log("WizardArchetype: 已创建「特殊纠缠」蓝图");
         }
@@ -219,6 +217,22 @@ namespace WizardArchetype
                     Kingmaker.EntitySystem.Stats.StatType.Constitution,
                     new Kingmaker.RuleSystem.DiceFormula(1, Kingmaker.RuleSystem.DiceType.D2),
                     0);
+
+                // ★ 2026-10-21（用户要求「告知体质伤害的来源」）：
+                //
+                // 不绑定来源时，战斗日志会写成「某某从未知来源受到了 1 点体质伤害」。
+                // RulebookEvent.Reason 是 public 可写属性（RulebookEvent.cs:21），
+                // 绑定一个带 EntityFact 的 RuleReason，日志就能取到来源名称
+                // （RuleReason.cs:154 有 RuleReason(EntityFact) 这个构造）。
+                //
+                // 用「时序专注」Buff 的 Fact 作为来源：
+                // 玩家看到的应该是「因为时序专注的专注失败」，而不是某个法术。
+                var entangleFact = unit.Descriptor?.Buffs?.GetBuff(
+                    SpecialEntangleBlueprints.SpecialEntangled);
+                if (entangleFact != null)
+                {
+                    rule.Reason = new Kingmaker.RuleSystem.RuleReason(entangleFact);
+                }
 
                 var game = Kingmaker.Game.Instance;
                 if (game == null || game.Rulebook == null) return;

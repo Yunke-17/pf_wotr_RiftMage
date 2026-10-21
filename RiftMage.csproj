@@ -4,13 +4,13 @@
     <TargetFramework>net48</TargetFramework>
     <!-- 本工程只引用游戏自带的托管程序集，不使用任何 NuGet 包，故关闭隐式还原 -->
     <RestorePackages>false</RestorePackages>
-    <AssemblyName>WizardArchetype</AssemblyName>
+    <AssemblyName>RiftMage</AssemblyName>
     <RootNamespace>WizardArchetype</RootNamespace>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <Version>0.0.1</Version>
+    <Version>1.0.1</Version>
     <NoWarn>CS0436;CS0649</NoWarn>
     <!-- Path to the game install; override via -p:GamePath=... -->
     <GamePath Condition="'$(GamePath)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Pathfinder Second Adventure</GamePath>
@@ -21,6 +21,11 @@
   <ItemGroup>
     <Compile Remove="verify\**" />
     <None Remove="verify\**" />
+  </ItemGroup>
+
+  <!-- 语言包：DLL 内嵌一份（只装 DLL 也能跑），同时作为外部文件随包发布（可翻译） -->
+  <ItemGroup>
+    <EmbeddedResource Include="Localization\*.json" />
   </ItemGroup>
 
   <ItemGroup>
@@ -42,6 +47,10 @@
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
       <HintPath>$(ManagedPath)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(ManagedPath)\UnityEngine.IMGUIModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.UI">

@@ -42,15 +42,15 @@ namespace WizardArchetype
         internal static void Create(BlueprintsCache cache)
         {
             UpBuff = MakeBuff(cache, GuidUpBuff, "YUp",
-                "【裂隙穿透】",
-                "施法者等级 CL 提高，法术豁免 DC 降低。\n" +
-                "每层：CL +1 / DC -2。层数见图标右下角。\n" +
+                "提高施法者等级",
+                "法师法术的施法者等级提高，豁免 DC 降低。\n" +
+                "每层：施法者等级 +1 / DC -2。层数见图标右下角。\n" +
                 "由「空隙调谐」造成，战斗结束时自动清除。");
 
             DownBuff = MakeBuff(cache, GuidDownBuff, "YDown",
-                "【致密收束】",
-                "法术豁免 DC 提高，施法者等级 CL 降低。\n" +
-                "每层：CL -1 / DC +2。层数见图标右下角。\n" +
+                "提高难度等级",
+                "法师法术的豁免 DC 提高，施法者等级降低。\n" +
+                "每层：DC +2 / 施法者等级 -1。层数见图标右下角。\n" +
                 "由「空隙调谐」造成，战斗结束时自动清除。");
         }
 

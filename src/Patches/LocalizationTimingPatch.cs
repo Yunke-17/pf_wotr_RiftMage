@@ -23,9 +23,15 @@ namespace WizardArchetype.Patches
             if (!Main.Enabled) return;
             WizardArchetypeBlueprints.FlushText();
 
-            // 术语必须在文本 flush 之后注入 —— GlossaryEntry 的 Name/Description
-            // 是 LocalizedString，要等本地化包就绪才能解析出文字。
-            Glossary.Inject();
+            // 图标第二轮：启动期（BlueprintRegistrationPatch）可能仍在 preloading，
+            // Sprite 资源未必可取；本地化就绪时再试一次，仍未成功则由 Main.OnUpdate 兜底重试。
+            IconsAndFx.ApplyQueued("本地化就绪后");
+
+            // 光环 prefab 可加载性自检（第一轮"看不到光环"无法从日志判断原因）
+            Presentation.VerifyFxAssets();
+
+            // 说明：本 MOD 已不再注册自定义术语（改用直接描述），
+            // 所以这里不需要再做 Glossary 注入。
         }
     }
 }

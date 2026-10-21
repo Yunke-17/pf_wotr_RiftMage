@@ -88,10 +88,9 @@ namespace WizardArchetype
             Ability = CreateAbility(cache);
             Feature = CreateFeature(cache);
 
-            // 图标（用户 2026-10-20 新增需求）
-            IconsAndFx.ApplyAbilityZ(cache, Feature, Ability);
+            // 图标 / 音效统一由 Presentation.Apply 装配（见 Presentation.cs 的表）
 
-            Main.Log?.Log("WizardArchetype: 能力Z 蓝图已构建（原版力竭 30s + 原版疲劳 90s，含图标）");
+            Main.Log?.Log("WizardArchetype: 能力Z 蓝图已构建（原版力竭 30s + 原版疲劳 90s）");
             return Feature;
         }
 
@@ -219,6 +218,11 @@ namespace WizardArchetype
                 ComponentsArray = comps.ToArray(),
             };
 
+            // 空 key 的 LocalizedString（不是 null）：UI 判定为「无此字段」并整行隐藏。
+            // 不给的话 UI 会显示 "<null>"（2026-10-21 用户反馈）。
+            ability.LocalizedDuration = new LocalizedString();
+            ability.LocalizedSavingThrow = new LocalizedString();
+
             // m_IsFullRoundAction 由 AbilityIsFullRoundInTurnBased 组件控制（回合制）
             var fullRound = new AbilityIsFullRoundInTurnBased
             {
@@ -291,20 +295,16 @@ namespace WizardArchetype
             WizardArchetypeBlueprints.RegisterText(k + ".Name", "空隙透支");
             WizardArchetypeBlueprints.RegisterText(k + ".Desc",
                 "空隙法师燃烧自身的现实锚点，强行撬开一道缝隙，夺回一次爆发。" +
-                "以一个" + Glossary.Link(Glossary.KFullRoundAction, "整轮动作") +
-                "使用，使" + Glossary.Link(Glossary.KVoidAnnihilation, "空隙湮灭") +
-                "恢复 1 次可用充能。\n" +
+                "以一个整轮动作使用，使空隙湮灭恢复 1 次可用充能。\n" +
                 "作为代价，法师会同时获得 30 秒力竭与 90 秒疲劳，两者从一开始便同时计时：" +
                 "30 秒后力竭结束，而疲劳仍会继续 60 秒。" +
                 "这两种状态不会因战斗结束而提前清除。\n" +
-                "只有当" + Glossary.Link(Glossary.KVoidAnnihilation, "空隙湮灭") +
-                "已无可用充能时才可使用。\n" +
+                "只有当空隙湮灭已无可用充能时才可使用。\n" +
                 "自基础" + Glossary.Link(Glossary.KCasterLevel, "施法者等级") +
                 " 7 级起获得此能力：7–11 级每次休息可使用 1 次，12–16 级 2 次，17 级及以上 3 次。");
             WizardArchetypeBlueprints.RegisterText(k + ".ResourceName", "空隙透支");
             WizardArchetypeBlueprints.RegisterText(k + ".ResourceDesc",
-                "基础" + Glossary.Link(Glossary.KCasterLevel, "施法者等级") +
-                " 7–11 级：1 次；12–16 级：2 次；17 级及以上：3 次。每次休息后恢复。");
+                "基础施法者等级 7–11 级：1 次；12–16 级：2 次；17 级及以上：3 次。每次休息后恢复。");
         }
     }
 }

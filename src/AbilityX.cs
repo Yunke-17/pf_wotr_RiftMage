@@ -72,10 +72,9 @@ namespace WizardArchetype
             // 4) 特性（给能力 + 给资源）
             Feature = CreateFeature(cache);
 
-            // 5) 图标与特效（用户 2026-10-20 新增需求）
-            IconsAndFx.ApplyAbilityX(cache, Feature, Ability, Buff);
+            // 5) 图标 / 光环 / 音效统一由 Presentation.Apply 在全部蓝图构建完之后装配
 
-            Main.Log?.Log("WizardArchetype: 能力X 蓝图已构建（含图标与特效）");
+            Main.Log?.Log("WizardArchetype: 能力X 蓝图已构建");
             return Feature;
         }
 
@@ -171,13 +170,7 @@ namespace WizardArchetype
                 name = "$AbilityXScope$AbilityX_0",
             };
 
-            // 临时诊断探针（第 0 步专用，验证通过后删除）
-            var probe = new AbilityXDebugProbe
-            {
-                name = "$AbilityXDebugProbe$AbilityX_2",
-            };
-
-            buff.ComponentsArray = new BlueprintComponent[] { scope, probe };
+            buff.ComponentsArray = new BlueprintComponent[] { scope };
 
             // 组件 name 必须唯一非空（05 踩坑 #1），赋值后必须回填 OwnerBlueprint（05 踩坑 #2）
             foreach (var c in buff.ComponentsArray)
@@ -264,6 +257,17 @@ namespace WizardArchetype
                 SpellResistance = false,
                 ComponentsArray = new BlueprintComponent[] { runAction, resourceLogic, noFacts },
             };
+
+            // ★ 2026-10-21（用户反馈「持续时间 null / 豁免检定 null」）：
+            //
+            // 这两个是 BlueprintAbility 上的 **LocalizedString 字段**（:1081/:1084）。
+            // 纯 C# 构造时若不给值就是 null，UI 会原样打印 "<null>"。
+            // 原版能力的做法是给一个 **空 key 的 LocalizedString 实例**（不是 null），
+            // 这样 UI 判定为「没有该字段」而整行隐藏。
+            //
+            // 本能力是自由动作、自身目标、无时长、无豁免，正应该走这条路。
+            ability.LocalizedDuration = new LocalizedString();
+            ability.LocalizedSavingThrow = new LocalizedString();
             SetNameAndDesc(ability, "WizardArchetype." + KeyBase + ".Name",
                 "WizardArchetype." + KeyBase + ".Desc");
 
@@ -326,11 +330,9 @@ namespace WizardArchetype
                 name = "$AbilityXSavingThrow$AbilityX_4",
             };
 
-            // 战斗开场「按先攻二选一」—— 挂在特性上（常驻），监听加入战斗事件。
-            var openingState = new SpecialOpeningState
-            {
-                name = "$SpecialOpeningState$AbilityX_5",
-            };
+            // ★ 2026-10-20：战斗开场「按先攻二选一」的 SpecialOpeningState 已迁出，
+            //   改挂到独立的「开场时序」特性上（见 OpeningTimingFeature）。
+            //   理由：那条规则和空隙湮灭本身无关，混在这条描述里让玩家看不出规则来源。
 
             var feature = new BlueprintFeature
             {
@@ -341,7 +343,7 @@ namespace WizardArchetype
                 HideInUI = false,
                 ComponentsArray = new BlueprintComponent[]
                 {
-                    addFacts, addResource, srBypass, diceBonus, savingThrow, openingState,
+                    addFacts, addResource, srBypass, diceBonus, savingThrow,
                 },
             };
             SetNameAndDesc(feature, "WizardArchetype." + KeyBase + ".Name",
@@ -381,28 +383,27 @@ namespace WizardArchetype
                 "以一个" + Glossary.Link(Glossary.KFreeAction, "自由动作") +
                 "激活后，法师在此后 3 轮内施放的下一个" +
                 Glossary.Link(Glossary.KSpell, "法术") + "将获得强化。\n" +
-                "被强化的" + Glossary.Link(Glossary.KSpell, "法术") + "会根据施法者的" +
-                Glossary.Link(Glossary.KCasterLevel, "施法者等级") + "获得不同程度的增益：" +
+                "被强化的法术会随" + Glossary.Link(Glossary.KCasterLevel, "施法者等级") +
+                "获得不同程度的增益：" +
                 "伤害骰的骰面提高 2（5 级起为 4，10 级起为 6）；" +
-                "敌方针对该法术的" + Glossary.Link(Glossary.KSavingThrow, "豁免检定") +
-                "需要掷 2 次并取较低结果（5 级起为 3 次，10 级起为 4 次）；" +
+                "敌方针对该法术的" + Glossary.Link(Glossary.KSavingThrow, "豁免") +
+                "检定需要掷 2 次并取较低结果（5 级起为 3 次，10 级起为 4 次）；" +
                 "该法术还会自动克服目标的" + Glossary.Link(Glossary.KSpellResistance, "法术抗力") +
                 "，并可突破以描述符判定的魔法免疫。\n" +
                 "只有当施放的是来自法师法术书的非戏法法术时，强化才会生效。" +
                 "若 3 轮内未施放合格法术，状态会消失，且本次使用次数不会返还。\n" +
-                "作为代价，" + Glossary.Link(Glossary.KSpell, "法术") +
-                "施放完成的瞬间，法师自身会立即陷入 1 轮" +
-                Glossary.Link(Glossary.KVoidAnnihilation, "时序反冲") + "。\n" +
+                "作为代价，法术施放完成的瞬间，法师自身会立即陷入 1 轮" +
+                "时序恍惚（如同恍惚：每轮只能进行一个移动动作或一个标准动作，移动速度减半）。\n" +
                 "每次休息后恢复 1 次使用次数。");
             WizardArchetypeBlueprints.RegisterText("WizardArchetype." + KeyBase + ".BuffName",
                 "空隙湮灭");
             WizardArchetypeBlueprints.RegisterText("WizardArchetype." + KeyBase + ".BuffDesc",
                 "现实缝隙已经撕开。你下一次施放的法师法术会获得强化：" +
-                "伤害骰面提高，" + Glossary.Link(Glossary.KSavingThrow, "豁免检定") +
-                "多次取低，自动克服" + Glossary.Link(Glossary.KSpellResistance, "法术抗力") +
+                "伤害骰面提高，" + Glossary.Link(Glossary.KSavingThrow, "豁免") +
+                "检定多次取低，自动克服" + Glossary.Link(Glossary.KSpellResistance, "法术抗力") +
                 "，并可突破描述符类免疫。" +
-                "强化完成后，你会立即陷入 1 轮" +
-                Glossary.Link(Glossary.KTimeRecoil, "时序反冲") + "。");
+                "强化完成后，你会立即陷入 1 轮时序恍惚" +
+                "（每轮只能进行一个移动动作或一个标准动作）。");
             WizardArchetypeBlueprints.RegisterText("WizardArchetype." + KeyBase + ".ResourceName",
                 "空隙湮灭");
             WizardArchetypeBlueprints.RegisterText("WizardArchetype." + KeyBase + ".ResourceDesc",

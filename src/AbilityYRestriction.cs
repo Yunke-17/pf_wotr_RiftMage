@@ -62,11 +62,11 @@ namespace WizardArchetype
             switch (Allow)
             {
                 case Kind.Up:
-                    return "已达 +2 层上限，或当前为反向层数（需先取消）";
+                    return "已达 2 层上限，或已选择「提高难度等级」（需先解除）";
                 case Kind.Down:
-                    return "已达 -2 层上限，或当前为反向层数（需先取消）";
+                    return "已达 2 层上限，或已选择「提高施法者等级」（需先解除）";
                 case Kind.Cancel:
-                    return "当前没有施法参数修正";
+                    return "当前没有施法参数调整";
                 default:
                     return "";
             }
