@@ -9,6 +9,9 @@ verify/obj/
 *.user
 *.suo
 
+# 本地留档说明（不随仓库/Release 发布）
+README.md
+
 # 游戏侧运行时产物（若有人误拷回工程）
 *.Log.txt
 WizardArchetype.dll.*.cache
